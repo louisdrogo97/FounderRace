@@ -53,60 +53,112 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
 
-    /* Thème clair forcé, indépendant des préférences sombres du navigateur/OS du visiteur */
-    .stApp { background-color: #FCFCFB !important; color: #20272A !important; }
-    [data-testid="stSidebar"] { background-color: #FBFAF8 !important; }
-    .stApp, .stApp p, .stApp span, .stApp label { color: #20272A; }
+    /* Fond global clair et typographie sombre par défaut */
+    .stApp {
+        background-color: #FAFAFA !important;
+        color: #1E293B !important;
+    }
 
+    .stApp p, .stApp span, .stApp label { color: #1E293B; }
+    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { 
+    color: white !important; 
+    background-color: #1E293B !important; 
+    }
+
+    /* Zone sombre 1 : Bandeau d'en-tête (texte blanc forcé) */
     .bandeau-hero {
         background: linear-gradient(135deg, #1E4D8C 0%, #16365F 100%);
-        color: white;
         padding: 2rem 2.2rem;
         border-radius: 14px;
         margin-bottom: 1.6rem;
     }
-    .bandeau-hero h1 { color: white; margin: 0 0 0.3rem 0; font-weight: 800; }
-    .bandeau-hero p { color: #D7E3F2; margin: 0; font-size: 1.05rem; }
-
-    .encart-fiscal {
-        background-color: #EEF2F6; border-left: 4px solid #1E4D8C;
-        padding: 0.9rem 1.1rem; border-radius: 4px; font-size: 0.85rem; color: #3A4550;
+    .bandeau-hero h1, 
+    .bandeau-hero h1 *, 
+    .bandeau-hero p, 
+    .bandeau-hero span {
+        color: #FFFFFF !important;
+    }
+    .bandeau-hero p {
+        color: #E2E8F0 !important;
+        font-size: 1.05rem;
     }
 
-    .carte-palier {
+    /* Zone sombre 2 : Boutons d'action principaux Streamlit */
+    button[kind="primary"], 
+    button[kind="primary"] * {
+        background-color: #1E4D8C !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Cartes blanches contrastées sur fond clair */
+    .carte-palier, .carte-athlete {
         border-radius: 12px;
-        padding: 1.1rem 1.2rem;
-        background: white;
-        box-shadow: 0 2px 10px rgba(20, 30, 50, 0.08);
+        background: #FFFFFF !important;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+    .carte-palier {
+        padding: 1.2rem;
         height: 100%;
     }
-    .carte-palier .badge {
-        display: inline-block; font-size: 0.72rem; font-weight: 700;
-        color: white; padding: 0.15rem 0.6rem; border-radius: 20px; margin-bottom: 0.5rem;
-    }
-    .carte-palier .montant { font-size: 1.6rem; font-weight: 800; color: #16365F; margin: 0.2rem 0 0.7rem 0; }
-    .carte-palier ul { margin: 0; padding-left: 1.1rem; }
-    .carte-palier li { margin-bottom: 0.3rem; font-size: 0.92rem; color: #3A4550; }
-
     .carte-athlete {
-        border-radius: 12px;
         padding: 1.2rem 1rem;
-        background: white;
-        box-shadow: 0 2px 10px rgba(20, 30, 50, 0.08);
         text-align: center;
         margin-bottom: 0.6rem;
     }
+
+    /* Zone sombre 3 : Badges des paliers */
+    .carte-palier .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #FFFFFF !important;
+        padding: 0.2rem 0.65rem;
+        border-radius: 20px;
+        margin-bottom: 0.5rem;
+    }
+    .carte-palier .montant {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #1E4D8C;
+        margin: 0.2rem 0 0.7rem 0;
+    }
+    .carte-palier li {
+        color: #334155 !important;
+        margin-bottom: 0.3rem;
+        font-size: 0.92rem;
+    }
+
+    .encart-fiscal {
+        background-color: #F1F5F9;
+        border-left: 4px solid #1E4D8C;
+        padding: 0.9rem 1.1rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #334155 !important;
+    }
+
     .carte-athlete img {
-        width: 84px; height: 84px; border-radius: 50%; object-fit: cover;
-        margin-bottom: 0.6rem; border: 3px solid #EEF2F6;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 0.6rem;
+        border: 3px solid #E2E8F0;
     }
     .carte-athlete .photo-vide {
-        width: 84px; height: 84px; border-radius: 50%; background: #EEF2F6;
-        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.6rem auto;
-        font-size: 1.8rem; color: #9AA5B1;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: #F1F5F9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.6rem auto;
+        font-size: 1.8rem;
     }
-    .carte-athlete .nom { font-weight: 700; color: #20272A; font-size: 1.02rem; }
-    .carte-athlete .details { color: #5B6672; font-size: 0.85rem; margin-top: 0.1rem; }
+    .carte-athlete .nom { font-weight: 700; color: #0F172A !important; }
+    .carte-athlete .details { color: #64748B !important; font-size: 0.85rem; margin-top: 0.1rem; }
     </style>
     """,
     unsafe_allow_html=True,

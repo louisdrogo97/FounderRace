@@ -166,6 +166,75 @@
         "alerte": "",
         "erreur": ""
       }
+    },
+    {
+      "date": "2026-09-12 15:48",
+      "profil": {
+        "nom": "Louis Drogo",
+        "sport": "Natation",
+        "niveau": "Régional",
+        "ville": "Marseille",
+        "palmares": "- xx\n- x\n- x\n",
+        "objectif": "JO 2028",
+        "contact": "0608237947",
+        "abonnes": 3350,
+        "contreparties_disponibles": [
+          "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+          "Logo sur ma tenue d'entraînement ou de compétition",
+          "Présence physique (événements ou locaux de l'entreprise)",
+          "Mention dans mes interviews / relations presse"
+        ]
+      },
+      "contenu": {
+        "accroche": "À Marseille, un nageur régional trace sa route vers 2028 — et cherche des partenaires pour accélérer sa progression.",
+        "paragraphe_profil": "Louis Drogo est un nageur marseillais évoluant au niveau régional, porté par un objectif clair : rejoindre les Jeux Olympiques 2028. Discipline, rigueur et constance rythment son quotidien d'entraînement, avec une communauté de plus de 3 300 abonnés qui suit sa progression. Son parcours reflète une progression méthodique, celle d'un athlète qui construit patiemment les fondations d'une carrière ambitieuse. Il recherche aujourd'hui des partenaires locaux prêts à s'investir dans cette trajectoire de long terme.",
+        "proposition_de_valeur": "S'associer à Louis Drogo, c'est soutenir un talent marseillais dans une dynamique de progression vers un objectif olympique fédérateur. Pour une entreprise locale, c'est l'occasion d'ancrer sa marque dans le tissu sportif régional et de valoriser des valeurs d'engagement, de rigueur et de persévérance partagées avec ses équipes et ses clients. C'est aussi un partenariat à taille humaine, avec une visibilité authentique et un contact direct avec l'athlète.",
+        "profil_entreprise_cible": "Une PME ou ETI implantée à Marseille ou dans sa région, sensible au sport comme vecteur de cohésion et d'image de marque, correspondrait bien à ce profil. Des secteurs comme le BTP, le conseil, les services ou l'industrie locale, souvent attachés à des valeurs d'effort et de rigueur, sont particulièrement adaptés. Une structure de taille intermédiaire, avec une volonté de s'inscrire dans un partenariat de proximité et de long terme, serait idéale.",
+        "conseils_prospection": [
+          "Contacter la CCI Marseille-Provence pour identifier des entreprises locales engagées dans le mécénat sportif",
+          "Utiliser LinkedIn pour repérer des dirigeants de PME/ETI marseillaises actifs sur les sujets RSE et sport",
+          "Se rapprocher des clubs de natation locaux et de leurs réseaux de partenaires historiques",
+          "Participer à des événements professionnels régionaux (salons, clubs d'entrepreneurs) pour présenter son projet directement"
+        ],
+        "paliers": [
+          {
+            "nom": "Partenaire Découverte",
+            "montant_eur": 600.0,
+            "contreparties": [
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          },
+          {
+            "nom": "Partenaire Performance",
+            "montant_eur": 1300.0,
+            "contreparties": [
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Mention dans mes interviews / relations presse"
+            ]
+          },
+          {
+            "nom": "Partenaire Ambition 2028",
+            "montant_eur": 2300.0,
+            "contreparties": [
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Présence physique (événements ou locaux de l'entreprise)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          }
+        ],
+        "erreur": ""
+      },
+      "stats": {
+        "plateforme": "Instagram",
+        "abonnes": 3350,
+        "moyenne_likes": 350,
+        "alerte": "",
+        "erreur": ""
+      },
+      "photo": "louis.drogo_at_dauphine.eu.jpg"
     }
   ]
 }
