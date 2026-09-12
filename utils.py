@@ -76,6 +76,9 @@ il permet également une contrepartie de visibilité pour l'entreprise. Ce docum
 conseil fiscal : la déductibilité effective dépend de chaque situation et doit être validée avec votre
 expert-comptable avant signature."""
 
+# Palette "médaille" pour les 3 paliers, cohérente entre l'aperçu Streamlit et le PDF.
+COULEURS_PALIERS = ["#B08D57", "#8C9199", "#C9A227"]  # bronze, argent, or
+
 
 @dataclass
 class ContenuBilan:
@@ -200,7 +203,42 @@ def extract_social_stats(
 # Génération du PDF
 # ---------------------------------------------------------------------------
 
-def build_pdf(profil: dict, stats: Optional[StatsReseauSocial], contenu: ContenuBilan, output_path: str) -> None:
+def _photo_circulaire(photo_bytes: bytes, taille_px: int = 400):
+    """Recadre une photo en carré centré puis applique un masque circulaire.
+    Retourne un buffer PNG (avec transparence) prêt à être intégré au PDF."""
+    import io
+    from PIL import Image as PILImage, ImageDraw, ImageOps
+
+    img = PILImage.open(io.BytesIO(photo_bytes)).convert("RGBA")
+    img = ImageOps.exif_transpose(img)  # respecte l'orientation EXIF (photos de téléphone)
+
+    # Recadrage carré centré
+    largeur, hauteur = img.size
+    cote = min(largeur, hauteur)
+    gauche = (largeur - cote) // 2
+    haut = (hauteur - cote) // 2
+    img = img.crop((gauche, haut, gauche + cote, haut + cote)).resize((taille_px, taille_px))
+
+    masque = PILImage.new("L", (taille_px, taille_px), 0)
+    dessin = ImageDraw.Draw(masque)
+    dessin.ellipse((0, 0, taille_px, taille_px), fill=255)
+
+    resultat = PILImage.new("RGBA", (taille_px, taille_px))
+    resultat.paste(img, (0, 0), mask=masque)
+
+    tampon = io.BytesIO()
+    resultat.save(tampon, format="PNG")
+    tampon.seek(0)
+    return tampon
+
+
+def build_pdf(
+    profil: dict,
+    stats: Optional[StatsReseauSocial],
+    contenu: ContenuBilan,
+    output_path: str,
+    photo_bytes: Optional[bytes] = None,
+) -> None:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
@@ -212,13 +250,14 @@ def build_pdf(profil: dict, stats: Optional[StatsReseauSocial], contenu: Contenu
         Table,
         TableStyle,
         HRFlowable,
+        Image,
     )
 
     styles = getSampleStyleSheet()
     bleu = colors.HexColor("#1E4D8C")
 
     titre_style = ParagraphStyle(
-        "TitreBilan", parent=styles["Title"], textColor=bleu, fontSize=22, spaceAfter=4
+        "TitreBilan", parent=styles["Title"], textColor=bleu, fontSize=22, spaceAfter=4, alignment=0
     )
     accroche_style = ParagraphStyle(
         "Accroche", parent=styles["Normal"], fontSize=13, textColor=colors.HexColor("#3A4550"),
@@ -234,8 +273,28 @@ def build_pdf(profil: dict, stats: Optional[StatsReseauSocial], contenu: Contenu
 
     story = []
 
-    story.append(Paragraph(profil.get("nom", "Bilan de Valeur"), titre_style))
-    story.append(Paragraph(f"{profil.get('sport', '')} — Dossier de partenariat", accroche_style))
+    # En-tête : titre + sous-titre à gauche, photo circulaire à droite si fournie
+    bloc_titre = [
+        Paragraph(profil.get("nom", "Bilan de Valeur"), titre_style),
+        Paragraph(f"{profil.get('sport', '')} — Dossier de partenariat", accroche_style),
+    ]
+    if photo_bytes:
+        try:
+            photo_buffer = _photo_circulaire(photo_bytes)
+            img_flowable = Image(photo_buffer, width=2.6 * cm, height=2.6 * cm)
+            entete = Table([[bloc_titre, img_flowable]], colWidths=[12.5 * cm, 3 * cm])
+            entete.setStyle(TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ]))
+            story.append(entete)
+        except Exception:
+            # Une photo illisible ne doit jamais faire échouer la génération du PDF.
+            story.extend(bloc_titre)
+    else:
+        story.extend(bloc_titre)
+
+    story.append(Spacer(1, 6))
     story.append(HRFlowable(width="100%", color=bleu, thickness=1))
     story.append(Spacer(1, 10))
 
@@ -276,7 +335,7 @@ def build_pdf(profil: dict, stats: Optional[StatsReseauSocial], contenu: Contenu
                 Paragraph(contreparties, corps_style),
             ])
         table = Table(data_table, colWidths=[4.3 * cm, 2.4 * cm, 8.3 * cm])
-        table.setStyle(TableStyle([
+        style_commands = [
             ("BACKGROUND", (0, 0), (-1, 0), bleu),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTSIZE", (0, 0), (-1, -1), 9),
@@ -285,7 +344,12 @@ def build_pdf(profil: dict, stats: Optional[StatsReseauSocial], contenu: Contenu
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F3F6FA")]),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ]))
+        ]
+        # Liseré coloré (bronze / argent / or) devant chaque ligne de palier.
+        for i in range(len(contenu.paliers)):
+            couleur = colors.HexColor(COULEURS_PALIERS[i % len(COULEURS_PALIERS)])
+            style_commands.append(("LINEBEFORE", (0, i + 1), (0, i + 1), 4, couleur))
+        table.setStyle(TableStyle(style_commands))
         story.append(table)
 
     story.append(Spacer(1, 16))

@@ -1,0 +1,110 @@
+{
+  "louis.drogo@dauphine.eu": [
+    {
+      "date": "2026-09-12 14:02",
+      "profil": {
+        "nom": "Louis Drogo",
+        "sport": "Natation",
+        "niveau": "Équipe de France",
+        "palmares": "ienczllef;zl \n",
+        "objectif": "JO 2028",
+        "contact": "0608237947",
+        "abonnes": null
+      },
+      "contenu": {
+        "accroche": "Louis Drogo porte les couleurs de la France en natation avec un objectif clair : les Jeux Olympiques 2028.",
+        "paragraphe_profil": "Louis Drogo évolue au sein de l'Équipe de France de natation, un niveau qui témoigne d'années d'entraînement rigoureux et d'exigence quotidienne. Son parcours est aujourd'hui tourné vers un objectif structurant : une qualification pour les Jeux Olympiques 2028. Ce projet de long terme repose sur des valeurs de discipline, de persévérance et de constance, des qualités qui font écho au monde de l'entreprise. Louis cherche des partenaires prêts à l'accompagner sur cette trajectoire exigeante.",
+        "proposition_de_valeur": "S'associer à un athlète évoluant en Équipe de France permet à une PME de s'ancrer dans une démarche sportive de haut niveau, porteuse de valeurs fédératrices pour ses équipes et ses clients. C'est aussi l'opportunité de soutenir un projet olympique sur le long terme et de valoriser cet engagement local dans sa communication institutionnelle. Ce partenariat offre une visibilité progressive, à construire conjointement à mesure que l'échéance 2028 se rapproche.",
+        "paliers": [
+          {
+            "nom": "Partenaire Découverte",
+            "montant_eur": 800.0,
+            "contreparties": [
+              "Logo de l'entreprise sur le bonnet ou le sac de sport",
+              "Mention de l'entreprise dans les communications écrites (newsletter, site club)",
+              "Photo dédicace remise à l'entreprise"
+            ]
+          },
+          {
+            "nom": "Partenaire Performance",
+            "montant_eur": 2500.0,
+            "contreparties": [
+              "Logo visible sur la tenue d'entraînement et de compétition",
+              "Mention lors des interventions publiques ou médiatiques locales",
+              "Invitation à assister à une compétition ou un stage d'entraînement",
+              "Bilan de saison personnalisé transmis à l'entreprise"
+            ]
+          },
+          {
+            "nom": "Partenaire Objectif 2028",
+            "montant_eur": 6000.0,
+            "contreparties": [
+              "Statut de partenaire principal cité en priorité dans toutes les communications",
+              "Logo en position centrale sur la tenue de compétition officielle",
+              "Organisation d'une rencontre ou intervention auprès des salariés de l'entreprise",
+              "Suivi personnalisé du parcours vers les JO 2028 avec points d'étape réguliers"
+            ]
+          }
+        ],
+        "erreur": ""
+      },
+      "stats": null
+    },
+    {
+      "date": "2026-09-12 14:14",
+      "profil": {
+        "nom": "Louis Drogo",
+        "sport": "Natation",
+        "niveau": "Régional",
+        "palmares": "- Champion de martinique 2015, 2016, 2017, 2028\n- Record de Martinique 200m dos u14\n",
+        "objectif": "saison 2027/2028",
+        "contact": "0608237947",
+        "abonnes": 7000
+      },
+      "contenu": {
+        "accroche": "Louis Drogo, nageur martiniquais, porte les couleurs de son territoire depuis près d'une décennie et vise la saison 2027/2028 comme nouveau cap de sa progression.",
+        "paragraphe_profil": "Louis Drogo évolue au niveau régional avec un palmarès solide bâti sur plusieurs titres de Champion de Martinique et un record régional en 200m dos catégorie U14. Formé sur le territoire martiniquais, il incarne la rigueur et la constance propres à la natation de haut niveau amateur. Son objectif pour la saison 2027/2028 traduit une volonté claire de progression et d'engagement sur le long terme. Il fédère déjà une communauté de 7000 abonnés qui suit son parcours et ses performances.",
+        "proposition_de_valeur": "S'associer à Louis Drogo, c'est soutenir un athlète martiniquais reconnu localement, porteur de valeurs d'endurance et de persévérance qui font écho à celles des entreprises du territoire. Sa communauté de 7000 abonnés offre une visibilité qualifiée et locale, idéale pour une PME souhaitant ancrer son image auprès d'un public régional. Ce partenariat permet également de s'inscrire dans une démarche de soutien au sport martiniquais sur plusieurs saisons.",
+        "paliers": [
+          {
+            "nom": "Partenaire Découverte",
+            "montant_eur": 600.0,
+            "contreparties": [
+              "Mention du sponsor sur les réseaux sociaux (1 publication)",
+              "Logo sur le bonnet ou le sac de sport",
+              "Citation dans les communications locales liées aux compétitions"
+            ]
+          },
+          {
+            "nom": "Partenaire Performance",
+            "montant_eur": 1800.0,
+            "contreparties": [
+              "Logo visible sur le maillot d'entraînement et de compétition",
+              "2 publications dédiées sur les réseaux sociaux par saison",
+              "Mention sur le site ou support de présentation de l'athlète",
+              "Invitation à assister à une compétition régionale"
+            ]
+          },
+          {
+            "nom": "Partenaire Ambassadeur",
+            "montant_eur": 3500.0,
+            "contreparties": [
+              "Logo en position principale sur le maillot de compétition",
+              "Présence de l'athlète lors d'un événement organisé par l'entreprise",
+              "Publications régulières tout au long de la saison 2027/2028",
+              "Association du nom de l'entreprise à l'objectif sportif de la saison"
+            ]
+          }
+        ],
+        "erreur": ""
+      },
+      "stats": {
+        "plateforme": "Instagram",
+        "abonnes": 7000,
+        "taux_engagement": "3%",
+        "alerte": "",
+        "erreur": ""
+      }
+    }
+  ]
+}

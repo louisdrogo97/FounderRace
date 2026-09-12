@@ -17,16 +17,17 @@ from pathlib import Path
 import streamlit as st
 
 from utils import (
+    COULEURS_PALIERS,
     DEFAULT_MODEL,
     build_pdf,
     charger_temoignages,
     contenu_depuis_dict,
-    extract_social_stats,
     generate_bilan_content,
     get_bilans_utilisateur,
     sauver_bilan_pour_utilisateur,
     sauver_temoignage,
     stats_depuis_dict,
+    StatsReseauSocial,
 )
 
 st.set_page_config(page_title="Bilan de Valeur", page_icon="🏆", layout="wide")
@@ -44,11 +45,38 @@ def _get_secret(key: str, default: str = "") -> str:
 st.markdown(
     """
     <style>
-    .sous-titre { color: #5B6672; font-size: 1.05rem; margin-top: -0.6rem; }
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+    html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
+
+    .bandeau-hero {
+        background: linear-gradient(135deg, #1E4D8C 0%, #16365F 100%);
+        color: white;
+        padding: 2rem 2.2rem;
+        border-radius: 14px;
+        margin-bottom: 1.6rem;
+    }
+    .bandeau-hero h1 { color: white; margin: 0 0 0.3rem 0; font-weight: 800; }
+    .bandeau-hero p { color: #D7E3F2; margin: 0; font-size: 1.05rem; }
+
     .encart-fiscal {
         background-color: #EEF2F6; border-left: 4px solid #1E4D8C;
         padding: 0.9rem 1.1rem; border-radius: 4px; font-size: 0.85rem; color: #3A4550;
     }
+
+    .carte-palier {
+        border-radius: 12px;
+        padding: 1.1rem 1.2rem;
+        background: white;
+        box-shadow: 0 2px 10px rgba(20, 30, 50, 0.08);
+        height: 100%;
+    }
+    .carte-palier .badge {
+        display: inline-block; font-size: 0.72rem; font-weight: 700;
+        color: white; padding: 0.15rem 0.6rem; border-radius: 20px; margin-bottom: 0.5rem;
+    }
+    .carte-palier .montant { font-size: 1.6rem; font-weight: 800; color: #16365F; margin: 0.2rem 0 0.7rem 0; }
+    .carte-palier ul { margin: 0; padding-left: 1.1rem; }
+    .carte-palier li { margin-bottom: 0.3rem; font-size: 0.92rem; color: #3A4550; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -60,6 +88,8 @@ if "stats_extraites" not in st.session_state:
     st.session_state.stats_extraites = None
 if "profil_courant" not in st.session_state:
     st.session_state.profil_courant = None
+if "photo_courante" not in st.session_state:
+    st.session_state.photo_courante = None
 if "pdf_path" not in st.session_state:
     st.session_state.pdf_path = None
 
@@ -110,10 +140,14 @@ with st.sidebar:
 # En-tête
 # ---------------------------------------------------------------------------
 
-st.title("Bilan de Valeur")
 st.markdown(
-    '<p class="sous-titre">Transformez votre profil sportif en dossier de sponsoring '
-    "professionnel, prêt à envoyer, en quelques secondes.</p>",
+    """
+    <div class="bandeau-hero">
+        <h1>🏆 Bilan de Valeur</h1>
+        <p>Transformez votre profil sportif en dossier de sponsoring professionnel,
+        prêt à envoyer, en quelques secondes.</p>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -152,8 +186,19 @@ with onglet_nouveau:
             placeholder="ex : Championne de France 2025, 4e aux championnats d'Europe 2026...",
         )
 
-        capture_stats = st.file_uploader(
-            "Capture d'écran de vos statistiques réseaux sociaux (optionnel)",
+        st.markdown("**Audience réseaux sociaux (optionnel)**")
+        col3, col4, col5 = st.columns(3)
+        with col3:
+            reseau_social = st.selectbox(
+                "Réseau principal", ["", "Instagram", "TikTok", "YouTube", "Strava", "X / Twitter", "Autre"]
+            )
+        with col4:
+            abonnes_manuel = st.number_input("Nombre d'abonnés", min_value=0, step=100, value=0)
+        with col5:
+            engagement_manuel = st.text_input("Taux d'engagement", placeholder="ex : 4.5%")
+
+        photo = st.file_uploader(
+            "Photo (portrait ou action) — apparaîtra sur votre dossier PDF",
             type=["png", "jpg", "jpeg", "webp"],
         )
 
@@ -169,12 +214,12 @@ with onglet_nouveau:
             st.error("Les champs marqués d'un * sont obligatoires.")
         else:
             stats = None
-            if capture_stats is not None:
-                with st.spinner("Lecture de vos statistiques réseaux sociaux…"):
-                    stats = extract_social_stats(capture_stats.read(), capture_stats.name, api_key, modele)
-                    if stats.erreur:
-                        st.warning(f"Stats non lues ({stats.erreur}) — le bilan sera généré sans elles.")
-                        stats = None
+            if reseau_social and abonnes_manuel:
+                stats = StatsReseauSocial(
+                    plateforme=reseau_social, abonnes=int(abonnes_manuel), taux_engagement=engagement_manuel
+                )
+
+            photo_bytes = photo.read() if photo is not None else None
 
             profil = {
                 "nom": nom,
@@ -195,6 +240,7 @@ with onglet_nouveau:
                 st.session_state.contenu_genere = contenu
                 st.session_state.stats_extraites = stats
                 st.session_state.profil_courant = profil
+                st.session_state.photo_courante = photo_bytes
                 st.session_state.pdf_path = None
                 sauver_bilan_pour_utilisateur(email_compte, profil, contenu, stats)
                 st.toast("Bilan enregistré dans votre compte — retrouvez-le dans « Mes Bilans ».")
@@ -221,11 +267,25 @@ with onglet_nouveau:
 
         if contenu.paliers:
             st.write("**Paliers de partenariat proposés**")
-            for p in contenu.paliers:
-                with st.container(border=True):
-                    st.markdown(f"**{p.get('nom', '')} — {int(p.get('montant_eur', 0)):,} €**".replace(",", " "))
-                    for c in p.get("contreparties", []):
-                        st.markdown(f"- {c}")
+            noms_medailles = ["🥉 Bronze", "🥈 Argent", "🥇 Or"]
+            cols_paliers = st.columns(len(contenu.paliers))
+            for i, (col, p) in enumerate(zip(cols_paliers, contenu.paliers)):
+                couleur = COULEURS_PALIERS[i % len(COULEURS_PALIERS)]
+                badge = noms_medailles[i] if i < len(noms_medailles) else f"Palier {i+1}"
+                contreparties_html = "".join(f"<li>{c}</li>" for c in p.get("contreparties", []))
+                montant = f"{int(p.get('montant_eur', 0)):,}".replace(",", " ")
+                with col:
+                    st.markdown(
+                        f"""
+                        <div class="carte-palier">
+                            <span class="badge" style="background-color:{couleur};">{badge}</span>
+                            <div style="font-weight:700; color:#20272A;">{p.get('nom', '')}</div>
+                            <div class="montant">{montant} €</div>
+                            <ul>{contreparties_html}</ul>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
         st.markdown(
             '<div class="encart-fiscal">📋 Le document PDF inclut un encart sur le cadre fiscal du '
@@ -239,7 +299,7 @@ with onglet_nouveau:
         if st.button("📄 Générer le PDF"):
             with tempfile.TemporaryDirectory() as tmp:
                 pdf_path = str(Path(tmp) / "bilan_de_valeur.pdf")
-                build_pdf(profil, stats, contenu, pdf_path)
+                build_pdf(profil, stats, contenu, pdf_path, photo_bytes=st.session_state.photo_courante)
                 st.session_state.pdf_path = Path(pdf_path).read_bytes()
             st.success("PDF généré !")
 
