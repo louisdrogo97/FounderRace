@@ -52,7 +52,8 @@ autour, sans balises markdown, avec exactement ces clés :
 }}
 
 Règles :
-- Ton sobre et professionnel, orienté PME locale (pas de ton "influenceur").
+- Ton sobre et professionnel, orienté PME locale (pas de ton "influenceur"), mais toujours clair,
+  positif et engageant — jamais grave, dramatique ou pesant.
 - Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les
   comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement (ex :
   palmarès exceptionnel malgré peu d'abonnés). Ne les ignore jamais complètement.
@@ -643,3 +644,61 @@ def stats_depuis_dict(d: Optional[dict]) -> Optional[StatsReseauSocial]:
         abonnes=d.get("abonnes", 0),
         moyenne_likes=d.get("moyenne_likes", 0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Envoi du Bilan par email
+# ---------------------------------------------------------------------------
+#
+# Choix de scope assumé : envoi via SMTP avec un compte email dédié à
+# l'application (ex: un compte Gmail avec un "mot de passe d'application"),
+# pas via un service tiers payant (Resend, SendGrid...) pour éviter d'ajouter
+# encore une inscription à faire cette nuit. À faire évoluer vers un service
+# transactionnel dédié si le volume d'envoi grandit.
+
+def envoyer_bilan_par_email(
+    destinataire: str,
+    nom_athlete: str,
+    pdf_bytes: bytes,
+    expediteur: str,
+    mot_de_passe_app: str,
+    smtp_serveur: str = "smtp.gmail.com",
+    smtp_port: int = 587,
+) -> Optional[str]:
+    """Envoie le PDF par email. Retourne None si succès, sinon un message d'erreur lisible."""
+    import smtplib
+    from email.mime.application import MIMEApplication
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    if not destinataire or "@" not in destinataire:
+        return "Adresse email de destination invalide."
+    if not expediteur or not mot_de_passe_app:
+        return "Configuration email manquante (expéditeur / mot de passe d'application) dans la barre latérale."
+
+    message = MIMEMultipart()
+    message["From"] = expediteur
+    message["To"] = destinataire
+    message["Subject"] = f"Votre Bilan de Valeur — {nom_athlete}"
+    message.attach(MIMEText(
+        f"Bonjour,\n\nVoici votre Bilan de Valeur généré pour {nom_athlete}, prêt à être envoyé à "
+        "vos partenaires potentiels.\n\nBonne prospection !",
+        "plain",
+    ))
+    piece_jointe = MIMEApplication(pdf_bytes, _subtype="pdf")
+    piece_jointe.add_header(
+        "Content-Disposition", "attachment", filename=f"bilan_de_valeur_{nom_athlete.replace(' ', '_')}.pdf"
+    )
+    message.attach(piece_jointe)
+
+    try:
+        with smtplib.SMTP(smtp_serveur, smtp_port, timeout=15) as serveur:
+            serveur.starttls()
+            serveur.login(expediteur, mot_de_passe_app)
+            serveur.sendmail(expediteur, destinataire, message.as_string())
+        return None
+    except smtplib.SMTPAuthenticationError:
+        return ("Authentification refusée : utilisez un mot de passe d'application (pas votre mot de "
+                "passe Gmail habituel) — voir myaccount.google.com/apppasswords.")
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"

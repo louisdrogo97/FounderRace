@@ -25,6 +25,7 @@ from utils import (
     charger_photo,
     charger_temoignages,
     contenu_depuis_dict,
+    envoyer_bilan_par_email,
     generate_bilan_content,
     get_bilans_utilisateur,
     get_tous_les_profils,
@@ -51,6 +52,11 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
+
+    /* Thème clair forcé, indépendant des préférences sombres du navigateur/OS du visiteur */
+    .stApp { background-color: #FCFCFB !important; color: #20272A !important; }
+    [data-testid="stSidebar"] { background-color: #FBFAF8 !important; }
+    .stApp, .stApp p, .stApp span, .stApp label { color: #20272A; }
 
     .bandeau-hero {
         background: linear-gradient(135deg, #1E4D8C 0%, #16365F 100%);
@@ -139,6 +145,18 @@ with st.sidebar:
     )
 
     st.divider()
+    with st.expander("📤 Configuration envoi par email"):
+        st.caption("Compte email utilisé pour vous envoyer les Bilans générés (ex: un Gmail avec un "
+                   "« mot de passe d'application », voir myaccount.google.com/apppasswords).")
+        email_expediteur = st.text_input(
+            "Email expéditeur", value=_get_secret("EMAIL_EXPEDITEUR"), key="email_expediteur"
+        )
+        email_mdp_app = st.text_input(
+            "Mot de passe d'application", type="password",
+            value=_get_secret("EMAIL_MOT_DE_PASSE"), key="email_mdp_app",
+        )
+
+    st.divider()
     st.subheader("Débloquer votre PDF")
     lien_paiement = st.text_input(
         "Lien de paiement (Stripe / Lydia / PayPal)",
@@ -200,10 +218,14 @@ with onglet_decouvrir:
         st.info("Aucun athlète n'a encore créé de Bilan de Valeur. Soyez le premier dans l'onglet "
                  "« Nouveau Bilan » !")
     else:
-        st.caption(f"{len(profils)} athlète(s) ont créé leur Bilan de Valeur")
+        st.caption(
+            f"{len(profils)} athlète(s) ont créé leur Bilan de Valeur — seule leur bio publique est "
+            "visible ici. Le dossier complet (paliers, contact) reste privé, propre à chaque athlète."
+        )
         colonnes = st.columns(3)
         for i, p in enumerate(profils):
             profil_p = p["profil"]
+            contenu_p = contenu_depuis_dict(p["contenu"])
             photo_bytes_p = charger_photo(p.get("photo"))
             with colonnes[i % 3]:
                 if photo_bytes_p:
@@ -222,20 +244,13 @@ with onglet_decouvrir:
                     """,
                     unsafe_allow_html=True,
                 )
-                contenu_p = contenu_depuis_dict(p["contenu"])
-                stats_p = stats_depuis_dict(p.get("stats"))
-                with tempfile.TemporaryDirectory() as tmp:
-                    pdf_path = str(Path(tmp) / "bilan.pdf")
-                    build_pdf(profil_p, stats_p, contenu_p, pdf_path, photo_bytes=photo_bytes_p)
-                    pdf_bytes_p = Path(pdf_path).read_bytes()
-                st.download_button(
-                    "⬇️ Voir le Bilan",
-                    data=pdf_bytes_p,
-                    file_name=f"bilan_{profil_p.get('nom', 'athlete').replace(' ', '_')}.pdf",
-                    mime="application/pdf",
-                    key=f"dl_galerie_{i}",
-                    use_container_width=True,
-                )
+                with st.expander("Voir sa bio"):
+                    if contenu_p.accroche:
+                        st.markdown(f"*{contenu_p.accroche}*")
+                    if profil_p.get("palmares"):
+                        st.markdown(f"**Palmarès**  \n{profil_p['palmares']}")
+                    if contenu_p.paragraphe_profil:
+                        st.write(contenu_p.paragraphe_profil)
 
 # ---------------------------------------------------------------------------
 # Onglet : nouveau Bilan
@@ -404,12 +419,33 @@ with onglet_nouveau:
                 st.success("PDF généré !")
 
         if st.session_state.pdf_path:
-            st.download_button(
-                "⬇️ Télécharger mon Bilan de Valeur (PDF)",
-                data=st.session_state.pdf_path,
-                file_name=f"bilan_de_valeur_{profil['nom'].replace(' ', '_')}.pdf",
-                mime="application/pdf",
-            )
+            col_dl, col_email = st.columns(2)
+            with col_dl:
+                st.download_button(
+                    "⬇️ Télécharger mon Bilan de Valeur (PDF)",
+                    data=st.session_state.pdf_path,
+                    file_name=f"bilan_de_valeur_{profil['nom'].replace(' ', '_')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+            with col_email:
+                with st.popover("📧 Recevoir par email", use_container_width=True):
+                    email_destination = st.text_input(
+                        "Votre adresse email", value=email_compte, key="email_destination_envoi"
+                    )
+                    if st.button("Envoyer", key="bouton_envoi_email"):
+                        with st.spinner("Envoi en cours…"):
+                            erreur_envoi = envoyer_bilan_par_email(
+                                email_destination,
+                                profil["nom"],
+                                st.session_state.pdf_path,
+                                email_expediteur,
+                                email_mdp_app,
+                            )
+                        if erreur_envoi:
+                            st.error(erreur_envoi)
+                        else:
+                            st.success(f"Envoyé à {email_destination} !")
             if not lien_paiement:
                 st.caption(
                     "💡 Astuce démo : ajoutez un lien de paiement dans la barre latérale pour proposer "
