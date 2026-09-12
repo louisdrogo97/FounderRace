@@ -17,6 +17,7 @@ from pathlib import Path
 import streamlit as st
 
 from utils import (
+    CONTREPARTIES_STANDARD,
     COULEURS_PALIERS,
     DEFAULT_MODEL,
     build_pdf,
@@ -179,12 +180,21 @@ with onglet_nouveau:
             )
         with col2:
             objectif = st.text_input("Objectif de financement", placeholder="ex : équipement, saison 2027, JO 2028")
+            ville = st.text_input("Ville / région", placeholder="ex : Lyon, Auvergne-Rhône-Alpes")
             contact = st.text_input("Téléphone / autre contact à afficher sur le PDF (optionnel)")
 
         palmares = st.text_area(
             "Palmarès et résultats principaux *",
             placeholder="ex : Championne de France 2025, 4e aux championnats d'Europe 2026...",
         )
+
+        st.markdown("**Concrètement, que fais-tu en échange de leur soutien ?**")
+        contreparties_choisies = st.multiselect(
+            "Sélectionnez ce que vous êtes prêt à offrir (l'IA ne proposera que ces contreparties)",
+            options=CONTREPARTIES_STANDARD,
+            label_visibility="collapsed",
+        )
+        contrepartie_autre = st.text_input("Autre (optionnel)", placeholder="ex : dédicace de matériel, cours privé...")
 
         st.markdown("**Audience réseaux sociaux (optionnel)**")
         col3, col4, col5 = st.columns(3)
@@ -195,7 +205,7 @@ with onglet_nouveau:
         with col4:
             abonnes_manuel = st.number_input("Nombre d'abonnés", min_value=0, step=100, value=0)
         with col5:
-            engagement_manuel = st.text_input("Taux d'engagement", placeholder="ex : 4.5%")
+            likes_manuel = st.number_input("Moyenne de likes / publication", min_value=0, step=10, value=0)
 
         photo = st.file_uploader(
             "Photo (portrait ou action) — apparaîtra sur votre dossier PDF",
@@ -216,19 +226,25 @@ with onglet_nouveau:
             stats = None
             if reseau_social and abonnes_manuel:
                 stats = StatsReseauSocial(
-                    plateforme=reseau_social, abonnes=int(abonnes_manuel), taux_engagement=engagement_manuel
+                    plateforme=reseau_social, abonnes=int(abonnes_manuel), moyenne_likes=int(likes_manuel)
                 )
 
             photo_bytes = photo.read() if photo is not None else None
+
+            contreparties_disponibles = list(contreparties_choisies)
+            if contrepartie_autre.strip():
+                contreparties_disponibles.append(contrepartie_autre.strip())
 
             profil = {
                 "nom": nom,
                 "sport": sport,
                 "niveau": niveau,
+                "ville": ville,
                 "palmares": palmares,
                 "objectif": objectif,
                 "contact": contact or email_compte,
                 "abonnes": stats.abonnes if stats else None,
+                "contreparties_disponibles": contreparties_disponibles,
             }
 
             with st.spinner("Rédaction de votre Bilan de Valeur par l'IA…"):
@@ -299,9 +315,14 @@ with onglet_nouveau:
         if st.button("📄 Générer le PDF"):
             with tempfile.TemporaryDirectory() as tmp:
                 pdf_path = str(Path(tmp) / "bilan_de_valeur.pdf")
-                build_pdf(profil, stats, contenu, pdf_path, photo_bytes=st.session_state.photo_courante)
+                avertissement = build_pdf(
+                    profil, stats, contenu, pdf_path, photo_bytes=st.session_state.photo_courante
+                )
                 st.session_state.pdf_path = Path(pdf_path).read_bytes()
-            st.success("PDF généré !")
+            if avertissement:
+                st.warning(f"PDF généré, mais : {avertissement}")
+            else:
+                st.success("PDF généré !")
 
         if st.session_state.pdf_path:
             st.download_button(
