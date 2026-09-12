@@ -688,3 +688,91 @@ def envoyer_bilan_par_email(
                 "passe Gmail habituel) — voir myaccount.google.com/apppasswords.")
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
+
+
+
+
+import requests
+
+SYSTEM_PROMPT_PROSPECTION = """Tu es un expert en développement commercial B2B.
+Analyse les résultats bruts de recherche web fournis et sélectionne les 5 entreprises (PME/ETI) les plus pertinentes pour un partenariat de sponsoring sportif local.
+Réponds UNIQUEMENT avec un JSON valide respectant exactement ce format :
+{
+  "cibles": [
+    {
+      "nom_entreprise": string,
+      "pourquoi_pertinente": string, // 2 phrases max : lien direct entre l'entreprise, le sport et la marque employeur.
+      "phrase_accroche": string // La première phrase (brise-glace) à utiliser dans un email ou message LinkedIn.
+    }
+  ]
+}
+"""
+
+def generer_plan_prospection(profil: dict, tavily_key: str, anthropic_key: str, model: str = DEFAULT_MODEL) -> dict:
+    ville = profil.get("ville", "Île-de-France")
+    sport = profil.get("sport", "sport de haut niveau")
+    
+    # 1. Appel API Tavily pour trouver les PME locales
+    query = f"PME BTP industrie santé recrutement basée à {ville} sponsoring marque employeur"
+    try:
+        resp = requests.post(
+            "https://api.tavily.com/search",
+            json={"api_key": tavily_key, "query": query, "search_depth": "advanced", "max_results": 10},
+            timeout=15
+        )
+        resp.raise_for_status()
+        tavily_data = resp.json()
+    except Exception as e:
+        return {"erreur": f"Échec de la recherche web Tavily : {str(e)}"}
+
+    # 2. Concaténation des résultats pour l'IA
+    snippets = [r.get("content", "") for r in tavily_data.get("results", [])]
+    contexte_web = "\n\n".join(snippets)
+
+    # 3. Synthèse par Claude
+    contenu_utilisateur = f"Profil : {sport} à {ville}.\n\nRésultats web bruts :\n{contexte_web}\n\nIdentifie les 5 meilleures cibles et génère le JSON."
+    
+    raw_text, erreur = _call_claude(
+        SYSTEM_PROMPT_PROSPECTION, 
+        [{"type": "text", "text": contenu_utilisateur}], 
+        anthropic_key, 
+        model
+    )
+    
+    if erreur:
+        return {"erreur": erreur}
+
+    try:
+        return json.loads(_clean_json_response(raw_text))
+    except json.JSONDecodeError:
+        return {"erreur": "Claude n'a pas renvoyé un format structuré valide."}
+
+def build_pdf_prospection(profil: dict, donnees_prospection: dict, output_path: str):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+
+    styles = getSampleStyleSheet()
+    bleu = colors.HexColor("#1E4D8C")
+
+    titre_style = ParagraphStyle("Titre", parent=styles["Title"], textColor=bleu, fontSize=20, alignment=0)
+    sous_titre = ParagraphStyle("SousTitre", parent=styles["Normal"], fontSize=12, spaceAfter=20, textColor=colors.HexColor("#3A4550"))
+    nom_ent = ParagraphStyle("NomEnt", parent=styles["Heading2"], textColor=bleu, fontSize=14, spaceBefore=14, spaceAfter=6)
+    corps = ParagraphStyle("Corps", parent=styles["Normal"], leading=15, spaceAfter=8)
+
+    story = []
+    story.append(Paragraph("Plan d'Attaque Prospection", titre_style))
+    story.append(Paragraph(f"Cibles identifiées par IA pour {profil.get('nom', '')} ({profil.get('ville', '')})", sous_titre))
+    story.append(HRFlowable(width="100%", color=bleu, thickness=1))
+    story.append(Spacer(1, 15))
+
+    for cible in donnees_prospection.get("cibles", []):
+        story.append(Paragraph(cible.get("nom_entreprise", "Entreprise"), nom_ent))
+        story.append(Paragraph(f"<b>Pourquoi cette cible :</b> {cible.get('pourquoi_pertinente', '')}", corps))
+        story.append(Paragraph(f"<b>Accroche suggérée :</b> <i>« {cible.get('phrase_accroche', '')} »</i>", corps))
+        story.append(Spacer(1, 10))
+
+    doc = SimpleDocTemplate(output_path, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm)
+    doc.build(story)

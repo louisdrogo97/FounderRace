@@ -33,6 +33,8 @@ from utils import (
     sauver_temoignage,
     stats_depuis_dict,
     StatsReseauSocial,
+    generer_plan_prospection,
+    build_pdf_prospection,
 )
 
 st.set_page_config(page_title="Bilan de Valeur", page_icon="🏆", layout="wide")
@@ -53,112 +55,85 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
 
-    /* Fond global clair et typographie sombre par défaut */
+    /* 1. Forcer le fond global en clair */
     .stApp {
         background-color: #FAFAFA !important;
+    }
+
+    /* 2. Eclaircir la barre latérale (Sidebar) pour rendre le texte lisible */
+    [data-testid="stSidebar"] {
+        background-color: #F8FAFC !important;
+    }
+    
+    /* 3. Forcer absolument tous les textes génériques en sombre */
+    .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp li {
         color: #1E293B !important;
     }
 
-    .stApp p, .stApp span, .stApp label { color: #1E293B; }
-    div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { 
-    color: white !important; 
-    background-color: #1E293B !important; 
+    /* 4. Correction des cases de saisie : Fond blanc pur et texte noir */
+    div[data-baseweb="input"] > div, 
+    div[data-baseweb="textarea"] > div,
+    div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 6px !important;
+    }
+    /* S'assurer que le texte tapé par l'utilisateur est bien noir */
+    div[data-baseweb="input"] input, 
+    div[data-baseweb="textarea"] textarea,
+    div[data-baseweb="select"] div { 
+        color: #0F172A !important; 
+        -webkit-text-fill-color: #0F172A !important;
+        background-color: transparent !important; 
     }
 
-    /* Zone sombre 1 : Bandeau d'en-tête (texte blanc forcé) */
+    /* 5. Le bandeau Hero : Fond sombre, texte blanc forcé */
     .bandeau-hero {
         background: linear-gradient(135deg, #1E4D8C 0%, #16365F 100%);
         padding: 2rem 2.2rem;
         border-radius: 14px;
         margin-bottom: 1.6rem;
     }
-    .bandeau-hero h1, 
-    .bandeau-hero h1 *, 
-    .bandeau-hero p, 
-    .bandeau-hero span {
+    .bandeau-hero h1, .bandeau-hero p, .bandeau-hero span {
         color: #FFFFFF !important;
     }
-    .bandeau-hero p {
-        color: #E2E8F0 !important;
-        font-size: 1.05rem;
-    }
 
-    /* Zone sombre 2 : Boutons d'action principaux Streamlit */
-    button[kind="primary"], 
-    button[kind="primary"] * {
+    /* 6. Les boutons principaux Streamlit : Fond bleu, texte blanc */
+    button[kind="primary"] {
         background-color: #1E4D8C !important;
+        border-color: #1E4D8C !important;
+    }
+    button[kind="primary"] * {
         color: #FFFFFF !important;
     }
 
-    /* Cartes blanches contrastées sur fond clair */
+    /* 7. Les cartes Athlète et Paliers (Fond blanc) */
     .carte-palier, .carte-athlete {
         border-radius: 12px;
         background: #FFFFFF !important;
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
     }
-    .carte-palier {
-        padding: 1.2rem;
-        height: 100%;
-    }
-    .carte-athlete {
-        padding: 1.2rem 1rem;
-        text-align: center;
-        margin-bottom: 0.6rem;
-    }
-
-    /* Zone sombre 3 : Badges des paliers */
+    .carte-palier { padding: 1.2rem; height: 100%; }
+    .carte-athlete { padding: 1.2rem 1rem; text-align: center; margin-bottom: 0.6rem; }
+    
     .carte-palier .badge {
-        display: inline-block;
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #FFFFFF !important;
-        padding: 0.2rem 0.65rem;
-        border-radius: 20px;
-        margin-bottom: 0.5rem;
+        display: inline-block; font-size: 0.72rem; font-weight: 700;
+        color: #FFFFFF !important; background-color: #1E4D8C;
+        padding: 0.2rem 0.65rem; border-radius: 20px; margin-bottom: 0.5rem;
     }
-    .carte-palier .montant {
-        font-size: 1.6rem;
-        font-weight: 800;
-        color: #1E4D8C;
-        margin: 0.2rem 0 0.7rem 0;
-    }
-    .carte-palier li {
-        color: #334155 !important;
-        margin-bottom: 0.3rem;
-        font-size: 0.92rem;
-    }
-
-    .encart-fiscal {
-        background-color: #F1F5F9;
-        border-left: 4px solid #1E4D8C;
-        padding: 0.9rem 1.1rem;
-        border-radius: 4px;
-        font-size: 0.85rem;
-        color: #334155 !important;
-    }
-
+    .carte-palier .montant { font-size: 1.6rem; font-weight: 800; color: #1E4D8C; margin: 0.2rem 0 0.7rem 0; }
+    
+    /* 8. Photo (agrandie à 120px) */
     .carte-athlete img {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-bottom: 0.6rem;
-        border: 3px solid #E2E8F0;
+        width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+        margin-bottom: 0.6rem; border: 3px solid #E2E8F0;
     }
     .carte-athlete .photo-vide {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: #F1F5F9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 0.6rem auto;
-        font-size: 1.8rem;
+        width: 120px; height: 120px; border-radius: 50%; background: #F1F5F9;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 0.6rem auto; font-size: 1.8rem; color: #64748B !important;
     }
-    .carte-athlete .nom { font-weight: 700; color: #0F172A !important; }
-    .carte-athlete .details { color: #64748B !important; font-size: 0.85rem; margin-top: 0.1rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -182,13 +157,8 @@ if "pdf_path" not in st.session_state:
 with st.sidebar:
     st.header("Configuration")
 
-    api_key = st.text_input(
-        "Clé API Anthropic",
-        type="password",
-        value=_get_secret("ANTHROPIC_API_KEY"),
-        help="Récupérable sur console.anthropic.com. Jamais stockée : elle ne vit que le "
-        "temps de la session de votre navigateur.",
-    )
+    api_key = _get_secret("ANTHROPIC_API_KEY")
+    tavily_key = _get_secret("TAVILY_API_KEY")
 
     modele = st.selectbox(
         "Modèle",
