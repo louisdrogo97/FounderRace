@@ -48,8 +48,14 @@ autour, sans balises markdown, avec exactement ces clés :
 
 Règles :
 - Ton sobre et professionnel, orienté PME locale (pas de ton "influenceur").
-- Les montants doivent rester cohérents avec le niveau sportif et l'audience déclarés — un athlète
-  débutant en réseaux sociaux ne doit pas se voir proposer les paliers les plus hauts.
+- Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les
+  comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement (ex :
+  palmarès exceptionnel malgré peu d'abonnés). Ne les ignore jamais complètement.
+- Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans
+  "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir). Si
+  cette liste est vide, propose des contreparties standards du secteur.
+- Si une ville/région est renseignée, utilise-la dans la proposition de valeur pour appuyer
+  l'argument de l'ancrage local auprès d'une PME.
 - Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du
   document s'en charge.
 - Réponds uniquement avec le JSON, rien d'autre.
@@ -62,7 +68,7 @@ valide, sans texte autour, avec ces clés :
 {
   "plateforme": string,        // "Instagram", "TikTok", "Strava", "" si indéterminé
   "abonnes": number,           // nombre d'abonnés/followers, 0 si illisible
-  "taux_engagement": string,   // ex: "4.2%", "" si non visible
+  "moyenne_likes": number,     // moyenne de likes par publication si visible, 0 sinon
   "alerte": string             // "" si rien à signaler, sinon ce qui est illisible
 }
 
@@ -79,6 +85,46 @@ expert-comptable avant signature."""
 # Palette "médaille" pour les 3 paliers, cohérente entre l'aperçu Streamlit et le PDF.
 COULEURS_PALIERS = ["#B08D57", "#8C9199", "#C9A227"]  # bronze, argent, or
 
+CONTREPARTIES_STANDARD = [
+    "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+    "Logo sur ma tenue d'entraînement ou de compétition",
+    "Présence physique (événements ou locaux de l'entreprise)",
+    "Mention dans mes interviews / relations presse",
+]
+
+NIVEAU_SCORES = {
+    "Régional": 0, "National": 1, "International": 2, "Équipe de France": 3, "Olympique": 4,
+}
+
+
+def calculer_montants_suggeres(niveau: str, abonnes: int) -> tuple[int, int, int]:
+    """Calcule 3 montants de référence (bas/moyen/haut) à partir du niveau sportif et du
+    nombre d'abonnés déclarés. Ce calcul est fait en code, pas par le LLM, pour que
+    l'adaptation du prix au profil soit fiable et vérifiable plutôt que livrée à
+    l'interprétation du modèle."""
+    niveau_score = NIVEAU_SCORES.get(niveau, 0)
+    abonnes = abonnes or 0
+    if abonnes < 1000:
+        abonnes_score = 0
+    elif abonnes < 10000:
+        abonnes_score = 1
+    elif abonnes < 50000:
+        abonnes_score = 2
+    elif abonnes < 200000:
+        abonnes_score = 3
+    else:
+        abonnes_score = 4
+
+    score = niveau_score + abonnes_score  # de 0 à 8
+
+    def _arrondi_50(valeur: float) -> int:
+        return int(round(valeur / 50.0) * 50)
+
+    bas = _arrondi_50(500 + (score / 8) * 1000)
+    moyen = _arrondi_50(800 + (score / 8) * 4200)
+    haut = _arrondi_50(1200 + (score / 8) * 8800)
+    return bas, moyen, haut
+
 
 @dataclass
 class ContenuBilan:
@@ -93,7 +139,7 @@ class ContenuBilan:
 class StatsReseauSocial:
     plateforme: str = ""
     abonnes: int = 0
-    taux_engagement: str = ""
+    moyenne_likes: int = 0
     alerte: str = ""
     erreur: str = ""
 
@@ -126,7 +172,11 @@ def _call_claude(system_prompt: str, content_blocks: list, api_key: str, model: 
 
 
 def generate_bilan_content(profil: dict, api_key: str, model: str = DEFAULT_MODEL) -> ContenuBilan:
+    bas, moyen, haut = calculer_montants_suggeres(profil.get("niveau", ""), profil.get("abonnes") or 0)
+
     contenu_utilisateur = (
+        f"Montants de référence calculés à partir du niveau et de l'audience déclarés : "
+        f"palier bas ≈ {bas}€, palier moyen ≈ {moyen}€, palier haut ≈ {haut}€.\n\n"
         "Voici le profil de l'athlète, au format JSON. Rédige le Bilan de Valeur demandé.\n\n"
         + json.dumps(profil, ensure_ascii=False, indent=2)
     )
@@ -194,7 +244,7 @@ def extract_social_stats(
     return StatsReseauSocial(
         plateforme=str(data.get("plateforme", "")).strip(),
         abonnes=abonnes,
-        taux_engagement=str(data.get("taux_engagement", "")).strip(),
+        moyenne_likes=int(float(data.get("moyenne_likes", 0) or 0)),
         alerte=str(data.get("alerte", "")).strip(),
     )
 
@@ -238,7 +288,10 @@ def build_pdf(
     contenu: ContenuBilan,
     output_path: str,
     photo_bytes: Optional[bytes] = None,
-) -> None:
+) -> Optional[str]:
+    """Génère le PDF. Retourne None si tout s'est bien passé, ou un message
+    d'avertissement (string) si la photo n'a pas pu être intégrée — le PDF est
+    alors quand même généré, sans photo, plutôt que d'échouer complètement."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
@@ -272,11 +325,16 @@ def build_pdf(
     )
 
     story = []
+    avertissement_photo = None
 
     # En-tête : titre + sous-titre à gauche, photo circulaire à droite si fournie
+    sous_titre = f"{profil.get('sport', '')} — Dossier de partenariat"
+    if profil.get("ville"):
+        sous_titre = f"{profil.get('sport', '')} · {profil['ville']} — Dossier de partenariat"
+
     bloc_titre = [
         Paragraph(profil.get("nom", "Bilan de Valeur"), titre_style),
-        Paragraph(f"{profil.get('sport', '')} — Dossier de partenariat", accroche_style),
+        Paragraph(sous_titre, accroche_style),
     ]
     if photo_bytes:
         try:
@@ -288,8 +346,10 @@ def build_pdf(
                 ("ALIGN", (1, 0), (1, 0), "RIGHT"),
             ]))
             story.append(entete)
-        except Exception:
-            # Une photo illisible ne doit jamais faire échouer la génération du PDF.
+        except Exception as exc:
+            # Une photo illisible ne doit jamais faire échouer tout le PDF, mais
+            # l'erreur doit être visible plutôt que masquée.
+            avertissement_photo = f"Photo non intégrée au PDF ({type(exc).__name__}: {exc})"
             story.extend(bloc_titre)
     else:
         story.extend(bloc_titre)
@@ -313,8 +373,8 @@ def build_pdf(
         texte_stats = f"{stats.abonnes:,} abonnés".replace(",", " ")
         if stats.plateforme:
             texte_stats += f" sur {stats.plateforme}"
-        if stats.taux_engagement:
-            texte_stats += f" — taux d'engagement {stats.taux_engagement}"
+        if stats.moyenne_likes:
+            texte_stats += f" — {stats.moyenne_likes:,} likes en moyenne par publication".replace(",", " ")
         story.append(Paragraph(texte_stats, corps_style))
 
     story.append(Paragraph("Pourquoi s'associer à ce projet ?", section_style))
@@ -365,6 +425,7 @@ def build_pdf(
         topMargin=2 * cm, bottomMargin=2 * cm, leftMargin=2 * cm, rightMargin=2 * cm,
     )
     doc.build(story)
+    return avertissement_photo
 
 
 # ---------------------------------------------------------------------------
@@ -467,5 +528,5 @@ def stats_depuis_dict(d: Optional[dict]) -> Optional[StatsReseauSocial]:
     return StatsReseauSocial(
         plateforme=d.get("plateforme", ""),
         abonnes=d.get("abonnes", 0),
-        taux_engagement=d.get("taux_engagement", ""),
+        moyenne_likes=d.get("moyenne_likes", 0),
     )
