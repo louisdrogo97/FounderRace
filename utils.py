@@ -26,48 +26,34 @@ DEFAULT_MODEL = "claude-sonnet-5"
 
 PALIERS_BORNES = {"min": 500, "max": 10000}  # garde-fou : bornes du pitch fondateur
 
-SYSTEM_PROMPT_CONTENU = f"""Tu es un rédacteur spécialisé en sponsoring sportif, qui aide des athlètes
-de haut niveau français à rédiger un dossier de sponsoring professionnel ("Bilan de Valeur") destiné à
-des dirigeants de PME/ETI (BTP, ESN, industrie, conseil).
+SYSTEM_PROMPT_CONTENU = f"""Tu es un expert en marketing sportif B2B. Tu rédiges un "Bilan de Valeur" pour convaincre des dirigeants de PME/ETI (notamment dans le BTP, l'industrie, les ESN ou le conseil).
 
-Tu reçois le profil d'un athlète en JSON. Réponds UNIQUEMENT avec un objet JSON valide, sans texte
-autour, sans balises markdown, avec exactement ces clés :
+Tu reçois le profil d'un athlète en JSON. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown, avec exactement ces clés :
 
 {{
-  "accroche": string,               // une phrase d'ouverture percutante (1 phrase, pas de superlatifs creux)
-  "paragraphe_profil": string,      // 3-4 phrases présentant l'athlète, son parcours, ses valeurs
-  "proposition_de_valeur": string,  // 2-3 phrases : pourquoi une PME locale gagnerait à s'associer à cet athlète
-  "profil_entreprise_cible": string,  // 2-3 phrases décrivant le TYPE d'entreprise à démarcher (secteur,
-                                       // taille, valeurs) cohérent avec le niveau/ville de l'athlète —
-                                       // JAMAIS de nom d'entreprise réel, uniquement une description générique
-  "conseils_prospection": [string],   // 3-4 conseils concrets et génériques pour trouver ce type
-                                       // d'entreprise soi-même (CCI locale, LinkedIn, clubs partenaires...)
+  "accroche": string,                 // 1 phrase choc liant la performance de l'athlète à l'ambition de l'entreprise.
+  "paragraphe_profil": string,        // Un storytelling percutant (3 phrases) : focus sur la résilience, l'objectif, et le parallèle avec le monde de l'entreprise. Pas de liste de résultats ennuyeuse.
+  "proposition_de_valeur": string,    // 3 phrases : Démontre l'impact ROI (Marque employeur, fierté interne, ancrage territorial, management).
+  "profil_entreprise_cible": string,  // 2-3 phrases décrivant le TYPE d'entreprise à démarcher (secteur, taille, valeurs) cohérent avec le niveau/ville de l'athlète — JAMAIS de nom d'entreprise réel, uniquement une description générique.
+  "conseils_prospection": [string],   // 3-4 conseils concrets et génériques pour trouver ce type d'entreprise soi-même (CCI locale, LinkedIn, clubs d'entrepreneurs...).
   "paliers": [
     {{
-      "nom": string,               // ex: "Partenaire Découverte"
-      "montant_eur": number,       // entre {PALIERS_BORNES['min']} et {PALIERS_BORNES['max']}, cohérent avec le profil
-      "contreparties": [string]    // 2-4 contreparties concrètes (logo sur maillot, mention réseaux sociaux, etc.)
+      "nom": string,                  // ex: "Partenaire Performance", "Pack Marque Employeur"
+      "montant_eur": number,          // entre {PALIERS_BORNES['min']} et {PALIERS_BORNES['max']}, cohérent avec le profil.
+      "contreparties": [string]       // 2-4 contreparties concrètes (logo, intervention en entreprise, post LinkedIn, etc.).
     }}
   ]  // exactement 3 paliers, montants croissants
 }}
 
 Règles :
-- Ton sobre et professionnel, orienté PME locale (pas de ton "influenceur"), mais toujours clair,
-  positif et engageant — jamais grave, dramatique ou pesant.
-- Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les
-  comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement (ex :
-  palmarès exceptionnel malgré peu d'abonnés). Ne les ignore jamais complètement.
-- Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans
-  "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir). Si
-  cette liste est vide, propose des contreparties standards du secteur.
-- Si une ville/région est renseignée, utilise-la dans la proposition de valeur ET dans le profil
-  d'entreprise cible pour appuyer l'argument de l'ancrage local.
-- "profil_entreprise_cible" et "conseils_prospection" doivent rester génériques et méthodologiques :
-  ne JAMAIS inventer de nom d'entreprise, d'email ou de numéro de téléphone réel ou fictif — ce serait
-  une information fabriquée et potentiellement trompeuse.
-- Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du
-  document s'en charge.
-- Réponds uniquement avec le JSON, rien d'autre.
+- Ton incisif, business, orienté "retour sur investissement" et "management".
+- Remplace impérativement le vocabulaire associatif ("aidez-moi", "soutenez-moi", "don") par un vocabulaire de partenariat ("investissez", "associez votre image", "collaborons").
+- Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement[cite: 5]. Ne les ignore jamais complètement[cite: 5].
+- Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir)[cite: 5]. Si cette liste est vide, propose des contreparties standards du secteur[cite: 5].
+- Si une ville/région est renseignée, utilise-la dans la proposition de valeur ET dans le profil d'entreprise cible pour appuyer l'argument de l'ancrage local[cite: 5].
+- "profil_entreprise_cible" et "conseils_prospection" doivent rester génériques et méthodologiques : ne JAMAIS inventer de nom d'entreprise, d'email ou de numéro de téléphone réel ou fictif — ce serait une information fabriquée et potentiellement trompeuse[cite: 5].
+- Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du document s'en charge[cite: 5].
+- Réponds uniquement avec le JSON, rien d'autre[cite: 5].
 """
 
 SYSTEM_PROMPT_STATS = """Tu analyses une capture d'écran de statistiques d'un réseau social
@@ -352,9 +338,9 @@ def build_pdf(
     ]
     if photo_bytes:
         try:
-            photo_buffer = _photo_circulaire(photo_bytes)
-            img_flowable = Image(photo_buffer, width=2.6 * cm, height=2.6 * cm)
-            entete = Table([[bloc_titre, img_flowable]], colWidths=[12.5 * cm, 3 * cm])
+            photo_buffer = _photo_circulaire(photo_bytes, taille_px=600)
+            img_flowable = Image(photo_buffer, width=4.0 * cm, height=4.0 * cm)
+            entete = Table([[bloc_titre, img_flowable]], colWidths=[11.5 * cm, 4.5 * cm])
             entete.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN", (1, 0), (1, 0), "RIGHT"),
