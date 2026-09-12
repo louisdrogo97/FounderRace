@@ -43,8 +43,7 @@ Streamlit n'est pas l'architecture qu'aurait ce produit s'il devait scaler à de
 
 ## Faire tourner le projet en local
 
-Vous trouverez le site à l'adresse suivante : 
-
+Vous trouverez le site à l'adresse suivante :  https://findasponsor.streamlit.app/
 ## Après le hackathon
 
 Ce MVP est la première brique d'un projet plus large : une infrastructure de sponsoring sportif sans paperasse, avec contrat standardisé, paiement séquestré, et certificat de prestation généré automatiquement pour sécuriser fiscalement l'entreprise. Cette nuit, on a validé la brique la plus simple à tester en 24h : est-ce qu'un athlète gagne vraiment du temps, et est-ce qu'un dossier généré par IA est assez bon pour être envoyé à un vrai dirigeant. La partie juridique et financière est la suite logique, pas une case cochée à la va-vite.
