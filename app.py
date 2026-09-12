@@ -474,6 +474,38 @@ with onglet_nouveau:
                     "le téléchargement contre une petite contribution."
                 )
 
+        st.divider()
+        st.subheader("🎯 Générer vos cibles de prospection")
+        st.write("L'IA va scanner le web pour trouver 5 entreprises locales pertinentes et vous rédiger les messages d'approche.")
+        
+        if st.button("🚀 Trouver mes 5 PME cibles (Recherche Web)"):
+            if not tavily_key:
+                st.error("Il manque la clé API Tavily dans vos secrets.")
+            else:
+                with st.spinner("Analyse du web et sélection des entreprises en cours..."):
+                    resultats = generer_plan_prospection(profil, tavily_key, api_key, modele)
+                    
+                    if "erreur" in resultats:
+                        st.error(resultats["erreur"])
+                    else:
+                        st.session_state.donnees_prospection = resultats
+                        st.success("Analyse terminée !")
+
+        if st.session_state.get("donnees_prospection"):
+            with tempfile.TemporaryDirectory() as tmp:
+                pdf_prosp_path = str(Path(tmp) / "plan_prospection.pdf")
+                build_pdf_prospection(profil, st.session_state.donnees_prospection, pdf_prosp_path)
+                pdf_prosp_bytes = Path(pdf_prosp_path).read_bytes()
+                
+                st.download_button(
+                    "⬇️ Télécharger mon plan d'attaque PME (PDF)",
+                    data=pdf_prosp_bytes,
+                    file_name=f"cibles_prospection_{profil['nom'].replace(' ', '_')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    type="primary"
+                )
+
 # ---------------------------------------------------------------------------
 # Onglet : historique du compte
 # ---------------------------------------------------------------------------

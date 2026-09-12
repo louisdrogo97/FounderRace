@@ -235,6 +235,69 @@
         "erreur": ""
       },
       "photo": "louis.drogo_at_dauphine.eu.jpg"
+    },
+    {
+      "date": "2026-09-12 17:41",
+      "profil": {
+        "nom": "Louis Drogo",
+        "sport": "Natation",
+        "niveau": "National",
+        "ville": "Marseille",
+        "palmares": "cc",
+        "objectif": "JO 2028",
+        "contact": "0608237947",
+        "abonnes": null,
+        "contreparties_disponibles": [
+          "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+          "Logo sur ma tenue d'entraînement ou de compétition",
+          "Présence physique (événements ou locaux de l'entreprise)",
+          "Mention dans mes interviews / relations presse"
+        ]
+      },
+      "contenu": {
+        "accroche": "Marseille vise les JO 2028 avec Louis Drogo : votre entreprise peut porter cette ambition et en récolter les fruits dès aujourd'hui.",
+        "paragraphe_profil": "Louis Drogo enchaîne les saisons au niveau national avec un objectif qui ne laisse aucune place à l'approximation : les Jeux Olympiques 2028. Derrière chaque longueur de bassin, c'est la même discipline que celle exigée dans vos équipes : rigueur, régularité, capacité à encaisser l'échec pour progresser. Associer votre entreprise à ce parcours, c'est injecter dans votre culture interne l'exigence d'un athlète qui structure sa progression sur le temps long, exactement comme une PME construit sa croissance.",
+        "proposition_de_valeur": "Investir dans Louis Drogo, c'est ancrer votre marque dans le tissu sportif marseillais et afficher une identité locale forte et engagée. C'est aussi un levier de cohésion interne puissant : vos collaborateurs suivent une trajectoire concrète vers les JO 2028, un objectif fédérateur et inspirant à partager en réunion ou sur vos réseaux. Enfin, c'est une preuve tangible de votre politique RSE et marque employeur, valorisable auprès de vos clients, partenaires et futurs recrutements.",
+        "profil_entreprise_cible": "Le profil idéal est une PME ou ETI marseillaise ou régionale (BTP, industrie, ESN, conseil) de 20 à 250 salariés, avec une direction sensible à l'image de marque locale et à la fierté d'appartenance. Une entreprise déjà engagée ou curieuse sur des actions RSE / sponsoring sportif, cherchant un ancrage territorial fort et une histoire à raconter en interne comme en externe.",
+        "conseils_prospection": [
+          "Contacter la CCI Marseille-Provence et les clubs d'entrepreneurs locaux (BNI, clubs d'affaires régionaux) pour identifier des dirigeants sensibles au sport de haut niveau.",
+          "Cibler sur LinkedIn les dirigeants et responsables RH/communication de PME régionales ayant déjà publié sur la RSE, l'engagement local ou le sponsoring sportif.",
+          "Solliciter les réseaux de sa fédération natation et les clubs sportifs marseillais pour obtenir des mises en relation avec des entreprises déjà partenaires d'autres athlètes.",
+          "Participer aux salons professionnels régionaux (BTP, industrie) et événements de networking pour présenter directement le projet sportif et son potentiel de communication."
+        ],
+        "paliers": [
+          {
+            "nom": "Partenaire Visibilité",
+            "montant_eur": 600.0,
+            "contreparties": [
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Logo sur ma tenue d'entraînement ou de compétition"
+            ]
+          },
+          {
+            "nom": "Partenaire Performance",
+            "montant_eur": 1300.0,
+            "contreparties": [
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          },
+          {
+            "nom": "Pack Ambassadeur JO 2028",
+            "montant_eur": 2300.0,
+            "contreparties": [
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Présence physique (événements ou locaux de l'entreprise)",
+              "Mention dans mes interviews / relations presse",
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)"
+            ]
+          }
+        ],
+        "erreur": ""
+      },
+      "stats": null,
+      "photo": "louis.drogo_at_dauphine.eu.jpg"
     }
   ]
 }
