@@ -1,5 +1,5 @@
 """
-Bilan de Valeur - MVP hackathon
+Pack Sponsoring - MVP hackathon
 -------------------------------
 Un athlète renseigne son profil (+ capture d'écran optionnelle de ses stats
 réseaux sociaux) -> l'IA rédige un dossier de sponsoring professionnel ->
@@ -21,6 +21,7 @@ from utils import (
     CONTREPARTIES_STANDARD,
     COULEURS_PALIERS,
     DEFAULT_MODEL,
+    NOM_PRODUIT,
     build_pdf,
     charger_photo,
     charger_temoignages,
@@ -31,13 +32,15 @@ from utils import (
     get_tous_les_profils,
     sauver_bilan_pour_utilisateur,
     sauver_temoignage,
-    stats_depuis_dict,
+    stats_liste_depuis_dict,
     StatsReseauSocial,
     generer_plan_prospection,
     build_pdf_prospection,
 )
 
-st.set_page_config(page_title="Bilan de Valeur", page_icon="🏆", layout="wide")
+st.set_page_config(page_title=NOM_PRODUIT, page_icon="🏆", layout="wide")
+
+OPTIONS_RESEAUX = ["", "Instagram", "TikTok", "YouTube", "Strava", "X / Twitter", "Autre"]
 
 
 def _get_secret(key: str, default: str = "") -> str:
@@ -55,59 +58,42 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
 
-    /* 1. Forcer le fond global en clair */
-    .stApp {
-        background-color: #FAFAFA !important;
+    /* Fond global */
+    .stApp { background-color: #FAFAFA !important; }
+
+    /* Barre latérale claire et lisible */
+    [data-testid="stSidebar"] {
+        background-color: #F1F5F9 !important;
+    }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] h3 {
+        color: #1E293B !important;
     }
 
-    /* 2. Eclaircir la barre latérale (Sidebar) pour rendre le texte lisible */
-    [data-testid="stSidebar"] {
-        background-color: #F8FAFC !important;
-    }
-    
-    /* 3. Forcer absolument tous les textes génériques en sombre */
+    /* Textes globaux */
     .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp li {
         color: #1E293B !important;
     }
 
-    /* 4. Correction des cases de saisie : Fond blanc pur et texte noir */
-    div[data-baseweb="input"] > div, 
+    /* Champs de saisie globaux (inputs, textareas, selects) */
+    div[data-baseweb="input"] > div,
     div[data-baseweb="textarea"] > div,
-    div[data-baseweb="select"] > div {
+    div[data-baseweb="select"] > div,
+    [data-testid="stSidebar"] div[data-baseweb="input"] > div,
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 6px !important;
     }
-    /* S'assurer que le texte tapé par l'utilisateur est bien noir */
-    div[data-baseweb="input"] input, 
+
+    div[data-baseweb="input"] input,
     div[data-baseweb="textarea"] textarea,
-    div[data-baseweb="select"] div { 
-        color: #0F172A !important; 
+    div[data-baseweb="select"] div {
+        color: #0F172A !important;
         -webkit-text-fill-color: #0F172A !important;
-        background-color: transparent !important; 
+        background-color: transparent !important;
     }
 
-    /* 5. Le bandeau Hero : Fond sombre, texte blanc forcé */
-    .bandeau-hero {
-        background: linear-gradient(135deg, #1E4D8C 0%, #16365F 100%);
-        padding: 2rem 2.2rem;
-        border-radius: 14px;
-        margin-bottom: 1.6rem;
-    }
-    .bandeau-hero h1, .bandeau-hero p, .bandeau-hero span {
-        color: #FFFFFF !important;
-    }
-
-    /* 6. Les boutons principaux Streamlit : Fond bleu, texte blanc */
-    button[kind="primary"] {
-        background-color: #1E4D8C !important;
-        border-color: #1E4D8C !important;
-    }
-    button[kind="primary"] * {
-        color: #FFFFFF !important;
-    }
-
-    /* 7. Les cartes Athlète et Paliers (Fond blanc) */
+    /* Cartes Athlète (Correction du texte invisible blanc sur blanc) */
     .carte-palier, .carte-athlete {
         border-radius: 12px;
         background: #FFFFFF !important;
@@ -116,15 +102,12 @@ st.markdown(
     }
     .carte-palier { padding: 1.2rem; height: 100%; }
     .carte-athlete { padding: 1.2rem 1rem; text-align: center; margin-bottom: 0.6rem; }
-    
-    .carte-palier .badge {
-        display: inline-block; font-size: 0.72rem; font-weight: 700;
-        color: #FFFFFF !important; background-color: #1E4D8C;
-        padding: 0.2rem 0.65rem; border-radius: 20px; margin-bottom: 0.5rem;
+
+    /* Forcer le texte des cartes athlètes en noir foncé */
+    .carte-athlete p, .carte-athlete div, .carte-athlete span {
+        color: #0F172A !important;
     }
-    .carte-palier .montant { font-size: 1.6rem; font-weight: 800; color: #1E4D8C; margin: 0.2rem 0 0.7rem 0; }
-    
-    /* 8. Photo (agrandie à 120px) */
+
     .carte-athlete img {
         width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
         margin-bottom: 0.6rem; border: 3px solid #E2E8F0;
@@ -133,6 +116,58 @@ st.markdown(
         width: 120px; height: 120px; border-radius: 50%; background: #F1F5F9;
         display: flex; align-items: center; justify-content: center;
         margin: 0 auto 0.6rem auto; font-size: 1.8rem; color: #64748B !important;
+    }
+
+    /* Cartes "Comment ça marche" */
+    .carte-etape {
+        border-radius: 12px;
+        background: #FFFFFF !important;
+        border: 1px solid #E2E8F0;
+        padding: 1.2rem;
+        height: 100%;
+    }
+    .carte-etape .numero {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #1E4D8C; color: #FFFFFF !important; font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Encart d'information fiscale */
+    .encart-fiscal {
+        background: #EEF2F6;
+        border-left: 4px solid #1E4D8C;
+        border-radius: 6px;
+        padding: 0.8rem 1rem;
+        color: #1E293B !important;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Boutons secondaires (fond blanc) : texte foncé lisible */
+    button[data-testid="stBaseButton-secondary"],
+    button[data-testid="stBaseButton-secondaryFormSubmit"] {
+        color: #1E293B !important;
+    }
+    button[data-testid="stBaseButton-secondary"] p,
+    button[data-testid="stBaseButton-secondary"] div,
+    button[data-testid="stBaseButton-secondaryFormSubmit"] p,
+    button[data-testid="stBaseButton-secondaryFormSubmit"] div {
+        color: #1E293B !important;
+        -webkit-text-fill-color: #1E293B !important;
+    }
+
+    /* Boutons primaires (fond coloré) : texte blanc lisible */
+    button[data-testid="stBaseButton-primary"],
+    button[data-testid="stBaseButton-primaryFormSubmit"] {
+        color: #FFFFFF !important;
+    }
+    button[data-testid="stBaseButton-primary"] p,
+    button[data-testid="stBaseButton-primary"] div,
+    button[data-testid="stBaseButton-primaryFormSubmit"] p,
+    button[data-testid="stBaseButton-primaryFormSubmit"] div {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }
     </style>
     """,
@@ -149,46 +184,73 @@ if "photo_courante" not in st.session_state:
     st.session_state.photo_courante = None
 if "pdf_path" not in st.session_state:
     st.session_state.pdf_path = None
+if "reseaux_ids" not in st.session_state:
+    st.session_state.reseaux_ids = [0]
+    st.session_state.reseaux_next_id = 1
 
 # ---------------------------------------------------------------------------
-# Barre latérale
+# Barre latérale : navigation + configuration
 # ---------------------------------------------------------------------------
 
 with st.sidebar:
-    st.header("Configuration")
-
-    api_key = _get_secret("ANTHROPIC_API_KEY")
-    tavily_key = _get_secret("TAVILY_API_KEY")
-
-    modele = st.selectbox(
-        "Modèle",
-        options=[DEFAULT_MODEL, "claude-haiku-4-5-20251001"],
-        index=0,
+    page = st.radio(
+        "Navigation",
+        ["🏠 Découvrir les athlètes", "🆕 Nouveau Pack", "📂 Mes Packs"],
+        label_visibility="collapsed",
     )
 
     st.divider()
-    with st.expander("📤 Configuration envoi par email"):
-        st.caption("Compte email utilisé pour vous envoyer les Bilans générés (ex: un Gmail avec un "
-                   "« mot de passe d'application », voir myaccount.google.com/apppasswords).")
-        email_expediteur = st.text_input(
-            "Email expéditeur", value=_get_secret("EMAIL_EXPEDITEUR"), key="email_expediteur"
+
+    # En déploiement, les clés/identifiants sont fournis via les secrets Streamlit : on ne montre
+    # les champs de configuration que si un secret manque (usage local / première installation).
+    api_key_secret = _get_secret("ANTHROPIC_API_KEY")
+    tavily_key_secret = _get_secret("TAVILY_API_KEY")
+    email_expediteur_secret = _get_secret("EMAIL_EXPEDITEUR")
+    email_mdp_app_secret = _get_secret("EMAIL_MOT_DE_PASSE")
+
+    if api_key_secret and tavily_key_secret and email_expediteur_secret and email_mdp_app_secret:
+        api_key = api_key_secret
+        tavily_key = tavily_key_secret
+        email_expediteur = email_expediteur_secret
+        email_mdp_app = email_mdp_app_secret
+        modele = DEFAULT_MODEL
+    else:
+        st.header("Configuration")
+
+        api_key = st.text_input(
+            "Clé API Anthropic",
+            type="password",
+            value=api_key_secret,
+            help="Récupérable sur console.anthropic.com. Pré-remplie automatiquement si présente dans "
+            "les secrets Streamlit, sinon collez-la ici.",
         )
-        email_mdp_app = st.text_input(
-            "Mot de passe d'application", type="password",
-            value=_get_secret("EMAIL_MOT_DE_PASSE"), key="email_mdp_app",
+        tavily_key = st.text_input(
+            "Clé API Tavily (recherche web, optionnelle)",
+            type="password",
+            value=tavily_key_secret,
+            help="Nécessaire uniquement pour « Générer vos cibles de prospection ». Récupérable sur "
+            "tavily.com.",
         )
 
-    st.divider()
-    st.subheader("Débloquer votre PDF")
-    lien_paiement = st.text_input(
-        "Lien de paiement (Stripe / Lydia / PayPal)",
-        placeholder="https://buy.stripe.com/...",
-    )
-    if lien_paiement:
-        st.link_button("💳 Débloquer mon Bilan de Valeur (1-2€)", lien_paiement, use_container_width=True)
-        st.caption("Une fois le paiement effectué, revenez ici et téléchargez votre PDF ci-dessous.")
+        modele = st.selectbox(
+            "Modèle",
+            options=[DEFAULT_MODEL, "claude-haiku-4-5-20251001"],
+            index=0,
+        )
 
-    st.divider()
+        with st.expander("📤 Configuration envoi par email"):
+            st.caption("Compte email utilisé pour vous envoyer les Packs Sponsoring générés (ex: un Gmail avec un "
+                       "« mot de passe d'application », voir myaccount.google.com/apppasswords).")
+            email_expediteur = st.text_input(
+                "Email expéditeur", value=email_expediteur_secret, key="email_expediteur"
+            )
+            email_mdp_app = st.text_input(
+                "Mot de passe d'application", type="password",
+                value=email_mdp_app_secret, key="email_mdp_app",
+            )
+
+        st.divider()
+
     with st.expander("💬 Laisser un retour (preuve de traction)"):
         nom_temoin = st.text_input("Prénom / discipline", key="nom_temoin")
         sport_temoin = st.text_input("Sport pratiqué", key="sport_temoin")
@@ -205,9 +267,9 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 
 st.markdown(
-    """
+    f"""
     <div class="bandeau-hero">
-        <h1>🏆 Bilan de Valeur</h1>
+        <h1>🏆 {NOM_PRODUIT}</h1>
         <p>Transformez votre profil sportif en dossier de sponsoring professionnel,
         prêt à envoyer, en quelques secondes.</p>
     </div>
@@ -215,33 +277,54 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+with st.container(border=True):
+    st.markdown("#### Comment ça marche ?")
+    c_etape1, c_etape2, c_etape3 = st.columns(3)
+    with c_etape1:
+        st.markdown(
+            """<div class="carte-etape"><div class="numero">1</div>
+            <b>Renseignez votre profil</b><br>Sport, palmarès, objectifs et audience sur vos réseaux
+            sociaux.</div>""",
+            unsafe_allow_html=True,
+        )
+    with c_etape2:
+        st.markdown(
+            """<div class="carte-etape"><div class="numero">2</div>
+            <b>L'IA rédige votre dossier</b><br>Un pitch professionnel et des paliers de partenariat
+            calibrés à votre profil.</div>""",
+            unsafe_allow_html=True,
+        )
+    with c_etape3:
+        st.markdown(
+            """<div class="carte-etape"><div class="numero">3</div>
+            <b>Téléchargez et envoyez</b><br>Un PDF prêt pour vos sponsors, et une liste d'entreprises
+            locales à contacter.</div>""",
+            unsafe_allow_html=True,
+        )
+
 # ---------------------------------------------------------------------------
 # Identification du compte (email, sans mot de passe — voir README pour le
 # choix de scope assumé)
 # ---------------------------------------------------------------------------
 
 email_compte = st.text_input(
-    "📧 Votre email (sert d'identifiant de compte pour retrouver vos Bilans)",
+    "📧 Votre email (sert d'identifiant de compte pour retrouver vos Packs)",
     key="email_compte",
     placeholder="camille.dubois@email.com",
 )
 
-onglet_decouvrir, onglet_nouveau, onglet_historique = st.tabs(
-    ["🏠 Découvrir les athlètes", "🆕 Nouveau Bilan", "📂 Mes Bilans"]
-)
-
 # ---------------------------------------------------------------------------
-# Onglet : page d'accueil / galerie de tous les profils inscrits
+# Page : galerie de tous les profils inscrits
 # ---------------------------------------------------------------------------
 
-with onglet_decouvrir:
+if page == "🏠 Découvrir les athlètes":
     profils = get_tous_les_profils()
     if not profils:
-        st.info("Aucun athlète n'a encore créé de Bilan de Valeur. Soyez le premier dans l'onglet "
-                 "« Nouveau Bilan » !")
+        st.info(f"Aucun athlète n'a encore créé de {NOM_PRODUIT}. Soyez le premier dans "
+                 "« Nouveau Pack » !")
     else:
         st.caption(
-            f"{len(profils)} athlète(s) ont créé leur Bilan de Valeur — seule leur bio publique est "
+            f"{len(profils)} athlète(s) ont créé leur {NOM_PRODUIT} — seule leur bio publique est "
             "visible ici. Le dossier complet (paliers, contact) reste privé, propre à chaque athlète."
         )
         colonnes = st.columns(3)
@@ -275,68 +358,94 @@ with onglet_decouvrir:
                         st.write(contenu_p.paragraphe_profil)
 
 # ---------------------------------------------------------------------------
-# Onglet : nouveau Bilan
+# Page : nouveau Pack Sponsoring
 # ---------------------------------------------------------------------------
 
-with onglet_nouveau:
-    with st.form("formulaire_profil"):
-        col1, col2 = st.columns(2)
-        with col1:
-            nom = st.text_input("Nom / prénom *")
-            sport = st.text_input("Sport pratiqué *")
-            niveau = st.selectbox(
-                "Niveau", ["Régional", "National", "International", "Équipe de France", "Olympique"]
+elif page == "🆕 Nouveau Pack":
+    col1, col2 = st.columns(2)
+    with col1:
+        nom = st.text_input("Nom / prénom *")
+        sport = st.text_input("Sport pratiqué *")
+        niveau = st.selectbox(
+            "Niveau", ["Régional", "National", "International", "Équipe de France", "Olympique"]
+        )
+    with col2:
+        objectif = st.text_input("Objectif de financement", placeholder="ex : équipement, saison 2027, JO 2028")
+        ville = st.text_input("Ville / région", placeholder="ex : Lyon, Auvergne-Rhône-Alpes")
+        contact = st.text_input("Téléphone / autre contact à afficher sur le PDF (optionnel)")
+
+    palmares = st.text_area(
+        "Palmarès et résultats principaux *",
+        placeholder="ex : Championne de France 2025, 4e aux championnats d'Europe 2026...",
+    )
+
+    st.markdown("**Concrètement, que fais-tu en échange de leur soutien ?**")
+    contreparties_choisies = st.multiselect(
+        "Sélectionnez ce que vous êtes prêt à offrir (l'IA ne proposera que ces contreparties)",
+        options=CONTREPARTIES_STANDARD,
+        label_visibility="collapsed",
+    )
+    contrepartie_autre = st.text_input("Autre (optionnel)", placeholder="ex : dédicace de matériel, cours privé...")
+
+    st.markdown("**Audience réseaux sociaux (optionnel)** — ajoutez une ligne par réseau")
+    col_h1, col_h2, col_h3, _ = st.columns([2, 2, 2, 0.6])
+    col_h1.caption("Réseau")
+    col_h2.caption("Abonnés")
+    col_h3.caption("Likes moyens / publication")
+
+    id_ligne_a_supprimer = None
+    for rid in st.session_state.reseaux_ids:
+        c1, c2, c3, c4 = st.columns([2, 2, 2, 0.6])
+        with c1:
+            st.selectbox(
+                "Réseau", OPTIONS_RESEAUX, key=f"reseau_sel_{rid}", label_visibility="collapsed",
             )
-        with col2:
-            objectif = st.text_input("Objectif de financement", placeholder="ex : équipement, saison 2027, JO 2028")
-            ville = st.text_input("Ville / région", placeholder="ex : Lyon, Auvergne-Rhône-Alpes")
-            contact = st.text_input("Téléphone / autre contact à afficher sur le PDF (optionnel)")
-
-        palmares = st.text_area(
-            "Palmarès et résultats principaux *",
-            placeholder="ex : Championne de France 2025, 4e aux championnats d'Europe 2026...",
-        )
-
-        st.markdown("**Concrètement, que fais-tu en échange de leur soutien ?**")
-        contreparties_choisies = st.multiselect(
-            "Sélectionnez ce que vous êtes prêt à offrir (l'IA ne proposera que ces contreparties)",
-            options=CONTREPARTIES_STANDARD,
-            label_visibility="collapsed",
-        )
-        contrepartie_autre = st.text_input("Autre (optionnel)", placeholder="ex : dédicace de matériel, cours privé...")
-
-        st.markdown("**Audience réseaux sociaux (optionnel)**")
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            reseau_social = st.selectbox(
-                "Réseau principal", ["", "Instagram", "TikTok", "YouTube", "Strava", "X / Twitter", "Autre"]
+        with c2:
+            st.number_input(
+                "Abonnés", min_value=0, step=100, key=f"reseau_ab_{rid}", label_visibility="collapsed",
             )
-        with col4:
-            abonnes_manuel = st.number_input("Nombre d'abonnés", min_value=0, step=100, value=0)
-        with col5:
-            likes_manuel = st.number_input("Moyenne de likes / publication", min_value=0, step=10, value=0)
+        with c3:
+            st.number_input(
+                "Likes moyens", min_value=0, step=10, key=f"reseau_lk_{rid}", label_visibility="collapsed",
+            )
+        with c4:
+            if len(st.session_state.reseaux_ids) > 1 and st.button("🗑️", key=f"reseau_del_{rid}"):
+                id_ligne_a_supprimer = rid
 
-        photo = st.file_uploader(
-            "Photo (portrait ou action) — apparaîtra sur votre dossier PDF",
-            type=["png", "jpg", "jpeg", "webp"],
-        )
+    if id_ligne_a_supprimer is not None:
+        st.session_state.reseaux_ids.remove(id_ligne_a_supprimer)
+        st.rerun()
 
-        valide = st.form_submit_button("Générer mon Bilan de Valeur", type="primary")
+    if st.button("+ Ajouter un réseau"):
+        st.session_state.reseaux_ids.append(st.session_state.reseaux_next_id)
+        st.session_state.reseaux_next_id += 1
+        st.rerun()
+
+    photo = st.file_uploader(
+        "Photo (portrait ou action) — apparaîtra sur votre dossier PDF",
+        type=["png", "jpg", "jpeg", "webp"],
+    )
+
+    valide = st.button(f"Générer mon {NOM_PRODUIT}", type="primary")
 
     if valide:
         if not email_compte.strip():
             st.error("Renseignez votre email au-dessus du formulaire : c'est ce qui vous permet de "
-                      "retrouver vos Bilans dans l'onglet « Mes Bilans ».")
+                      "retrouver vos Packs dans « Mes Packs ».")
         elif not api_key:
             st.error("Renseignez votre clé API Anthropic dans la barre latérale.")
         elif not (nom and sport and palmares):
             st.error("Les champs marqués d'un * sont obligatoires.")
         else:
-            stats = None
-            if reseau_social and abonnes_manuel:
-                stats = StatsReseauSocial(
-                    plateforme=reseau_social, abonnes=int(abonnes_manuel), moyenne_likes=int(likes_manuel)
-                )
+            stats_liste = []
+            for rid in st.session_state.reseaux_ids:
+                reseau = st.session_state.get(f"reseau_sel_{rid}", "")
+                abonnes = st.session_state.get(f"reseau_ab_{rid}", 0)
+                likes = st.session_state.get(f"reseau_lk_{rid}", 0)
+                if reseau and abonnes:
+                    stats_liste.append(
+                        StatsReseauSocial(plateforme=reseau, abonnes=int(abonnes), moyenne_likes=int(likes))
+                    )
 
             photo_bytes = photo.read() if photo is not None else None
 
@@ -352,23 +461,23 @@ with onglet_nouveau:
                 "palmares": palmares,
                 "objectif": objectif,
                 "contact": contact or email_compte,
-                "abonnes": stats.abonnes if stats else None,
+                "abonnes": sum(s.abonnes for s in stats_liste) if stats_liste else None,
                 "contreparties_disponibles": contreparties_disponibles,
             }
 
-            with st.spinner("Rédaction de votre Bilan de Valeur par l'IA…"):
+            with st.spinner(f"Rédaction de votre {NOM_PRODUIT} par l'IA…"):
                 contenu = generate_bilan_content(profil, api_key, modele)
 
             if contenu.erreur:
                 st.error(f"Erreur lors de la génération : {contenu.erreur}")
             else:
                 st.session_state.contenu_genere = contenu
-                st.session_state.stats_extraites = stats
+                st.session_state.stats_extraites = stats_liste
                 st.session_state.profil_courant = profil
                 st.session_state.photo_courante = photo_bytes
                 st.session_state.pdf_path = None
-                sauver_bilan_pour_utilisateur(email_compte, profil, contenu, stats, photo_bytes=photo_bytes)
-                st.toast("Bilan enregistré dans votre compte — retrouvez-le dans « Mes Bilans ».")
+                sauver_bilan_pour_utilisateur(email_compte, profil, contenu, stats_liste, photo_bytes=photo_bytes)
+                st.toast(f"{NOM_PRODUIT} enregistré dans votre compte — retrouvez-le dans « Mes Packs ».")
 
     # -----------------------------------------------------------------
     # Résultat + export PDF
@@ -376,26 +485,22 @@ with onglet_nouveau:
 
     if st.session_state.contenu_genere:
         contenu = st.session_state.contenu_genere
-        stats = st.session_state.stats_extraites
+        stats_liste = st.session_state.stats_extraites or []
         profil = st.session_state.profil_courant
 
-        st.subheader("Aperçu de votre Bilan de Valeur")
+        st.subheader(f"Aperçu de votre {NOM_PRODUIT}")
         if contenu.accroche:
             st.markdown(f"*{contenu.accroche}*")
         st.write(contenu.paragraphe_profil)
 
-        if stats and stats.abonnes:
-            st.metric("Audience détectée", f"{stats.abonnes:,}".replace(",", " ") + f" ({stats.plateforme})")
+        if stats_liste:
+            cols_stats = st.columns(len(stats_liste))
+            for col, s in zip(cols_stats, stats_liste):
+                with col:
+                    st.metric(s.plateforme or "Réseau", f"{s.abonnes:,}".replace(",", " ") + " abonnés")
 
         st.write("**Pourquoi s'associer à ce projet ?**")
         st.write(contenu.proposition_de_valeur)
-
-        if contenu.profil_entreprise_cible:
-            st.write("**Profil d'entreprise à cibler**")
-            st.write(contenu.profil_entreprise_cible)
-            if contenu.conseils_prospection:
-                for conseil in contenu.conseils_prospection:
-                    st.markdown(f"- {conseil}")
 
         if contenu.paliers:
             st.write("**Paliers de partenariat proposés**")
@@ -432,7 +537,7 @@ with onglet_nouveau:
             with tempfile.TemporaryDirectory() as tmp:
                 pdf_path = str(Path(tmp) / "bilan_de_valeur.pdf")
                 avertissement = build_pdf(
-                    profil, stats, contenu, pdf_path, photo_bytes=st.session_state.photo_courante
+                    profil, stats_liste, contenu, pdf_path, photo_bytes=st.session_state.photo_courante
                 )
                 st.session_state.pdf_path = Path(pdf_path).read_bytes()
             if avertissement:
@@ -444,9 +549,9 @@ with onglet_nouveau:
             col_dl, col_email = st.columns(2)
             with col_dl:
                 st.download_button(
-                    "⬇️ Télécharger mon Bilan de Valeur (PDF)",
+                    f"⬇️ Télécharger mon {NOM_PRODUIT} (PDF)",
                     data=st.session_state.pdf_path,
-                    file_name=f"bilan_de_valeur_{profil['nom'].replace(' ', '_')}.pdf",
+                    file_name=f"pack_sponsoring_{profil['nom'].replace(' ', '_')}.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                 )
@@ -468,57 +573,72 @@ with onglet_nouveau:
                             st.error(erreur_envoi)
                         else:
                             st.success(f"Envoyé à {email_destination} !")
-            if not lien_paiement:
-                st.caption(
-                    "💡 Astuce démo : ajoutez un lien de paiement dans la barre latérale pour proposer "
-                    "le téléchargement contre une petite contribution."
-                )
 
         st.divider()
         st.subheader("🎯 Générer vos cibles de prospection")
-        st.write("L'IA va scanner le web pour trouver 5 entreprises locales pertinentes et vous rédiger les messages d'approche.")
-        
-        if st.button("🚀 Trouver mes 5 PME cibles (Recherche Web)"):
+        st.write("L'IA va scanner le web pour trouver jusqu'à 7 entreprises locales pertinentes, et vous proposer un email type de prospection à personnaliser vous-même.")
+
+        if st.button("🚀 Trouver mes 7 PME cibles (Recherche Web)"):
             if not tavily_key:
                 st.error("Il manque la clé API Tavily dans vos secrets.")
+            elif not ville.strip():
+                st.error("Renseignez une ville / région dans le formulaire ci-dessus pour cibler la "
+                          "recherche d'entreprises locales.")
             else:
+                # On repart des champs actuels du formulaire (nom/sport/ville) plutôt que du profil figé
+                # au moment du dernier « Générer mon Pack » : sinon, modifier la ville après coup sans
+                # régénérer le Pack utilisait encore l'ancienne valeur (ou une ville vide).
+                profil_prospection = {**profil, "nom": nom, "sport": sport, "ville": ville}
                 with st.spinner("Analyse du web et sélection des entreprises en cours..."):
-                    resultats = generer_plan_prospection(profil, tavily_key, api_key, modele)
-                    
+                    resultats = generer_plan_prospection(profil_prospection, tavily_key, api_key, modele)
+
                     if "erreur" in resultats:
                         st.error(resultats["erreur"])
                     else:
                         st.session_state.donnees_prospection = resultats
+                        st.session_state.profil_prospection = profil_prospection
+                        email_type = resultats.get("email_type", {})
+                        st.session_state.email_type_objet = email_type.get("objet", "")
+                        st.session_state.email_type_corps = email_type.get("corps", "")
                         st.success("Analyse terminée !")
 
         if st.session_state.get("donnees_prospection"):
+            profil_pour_pdf = st.session_state.get("profil_prospection", profil)
             with tempfile.TemporaryDirectory() as tmp:
                 pdf_prosp_path = str(Path(tmp) / "plan_prospection.pdf")
-                build_pdf_prospection(profil, st.session_state.donnees_prospection, pdf_prosp_path)
+                build_pdf_prospection(profil_pour_pdf, st.session_state.donnees_prospection, pdf_prosp_path)
                 pdf_prosp_bytes = Path(pdf_prosp_path).read_bytes()
-                
+
                 st.download_button(
                     "⬇️ Télécharger mon plan d'attaque PME (PDF)",
                     data=pdf_prosp_bytes,
-                    file_name=f"cibles_prospection_{profil['nom'].replace(' ', '_')}.pdf",
+                    file_name=f"cibles_prospection_{profil_pour_pdf['nom'].replace(' ', '_')}.pdf",
                     mime="application/pdf",
                     use_container_width=True,
                     type="primary"
                 )
 
+            st.markdown("**✉️ Email type de prospection**")
+            st.caption(
+                "Un seul modèle, réutilisable pour toutes vos cibles : remplacez [Nom de l'entreprise] "
+                "(et [Prénom du contact] si présent) avant chaque envoi. Modifiable ci-dessous."
+            )
+            st.text_input("Objet", key="email_type_objet")
+            st.text_area("Corps de l'email", key="email_type_corps", height=220)
+
 # ---------------------------------------------------------------------------
-# Onglet : historique du compte
+# Page : historique du compte
 # ---------------------------------------------------------------------------
 
-with onglet_historique:
+elif page == "📂 Mes Packs":
     if not email_compte.strip():
-        st.info("Renseignez votre email en haut de la page pour voir vos Bilans précédents.")
+        st.info("Renseignez votre email en haut de la page pour voir vos Packs précédents.")
     else:
         historique = get_bilans_utilisateur(email_compte)
         if not historique:
-            st.info("Aucun Bilan généré pour l'instant avec cet email.")
+            st.info(f"Aucun {NOM_PRODUIT} généré pour l'instant avec cet email.")
         else:
-            st.caption(f"{len(historique)} Bilan(s) trouvé(s) pour {email_compte.strip().lower()}")
+            st.caption(f"{len(historique)} {NOM_PRODUIT}(s) trouvé(s) pour {email_compte.strip().lower()}")
             for i, entree in enumerate(historique):
                 profil_h = entree["profil"]
                 with st.container(border=True):
@@ -528,7 +648,7 @@ with onglet_historique:
                         st.caption(f"Généré le {entree['date']}")
                     with col_bouton:
                         contenu_h = contenu_depuis_dict(entree["contenu"])
-                        stats_h = stats_depuis_dict(entree.get("stats"))
+                        stats_h = stats_liste_depuis_dict(entree.get("stats"))
                         photo_h = charger_photo(entree.get("photo"))
                         with tempfile.TemporaryDirectory() as tmp:
                             pdf_path = str(Path(tmp) / "bilan.pdf")
@@ -537,7 +657,7 @@ with onglet_historique:
                         st.download_button(
                             "⬇️ PDF",
                             data=pdf_bytes,
-                            file_name=f"bilan_{profil_h.get('nom', 'athlete').replace(' ', '_')}_{i}.pdf",
+                            file_name=f"pack_sponsoring_{profil_h.get('nom', 'athlete').replace(' ', '_')}_{i}.pdf",
                             mime="application/pdf",
                             key=f"dl_historique_{i}",
                         )

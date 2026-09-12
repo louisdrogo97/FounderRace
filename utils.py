@@ -22,11 +22,15 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
+# Nom affiché du produit — centralisé ici pour n'avoir qu'un seul endroit à changer
+# (titres, PDF, emails...).
+NOM_PRODUIT = "Pack Sponsoring"
+
 DEFAULT_MODEL = "claude-sonnet-5"
 
 PALIERS_BORNES = {"min": 500, "max": 10000}  # garde-fou : bornes du pitch fondateur
 
-SYSTEM_PROMPT_CONTENU = f"""Tu es un expert en marketing sportif B2B. Tu rédiges un "Bilan de Valeur" pour convaincre des dirigeants de PME/ETI (notamment dans le BTP, l'industrie, les ESN ou le conseil).
+SYSTEM_PROMPT_CONTENU = f"""Tu es un expert en marketing sportif B2B. Tu rédiges un "{NOM_PRODUIT}" pour convaincre des dirigeants de PME/ETI (notamment dans le BTP, l'industrie, les ESN ou le conseil).
 
 Tu reçois le profil d'un athlète en JSON. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown, avec exactement ces clés :
 
@@ -34,8 +38,6 @@ Tu reçois le profil d'un athlète en JSON. Réponds UNIQUEMENT avec un objet JS
   "accroche": string,                 // 1 phrase choc liant la performance de l'athlète à l'ambition de l'entreprise.
   "paragraphe_profil": string,        // Un storytelling percutant (3 phrases) : focus sur la résilience, l'objectif, et le parallèle avec le monde de l'entreprise. Pas de liste de résultats ennuyeuse.
   "proposition_de_valeur": string,    // 3 phrases : Démontre l'impact ROI (Marque employeur, fierté interne, ancrage territorial, management).
-  "profil_entreprise_cible": string,  // 2-3 phrases décrivant le TYPE d'entreprise à démarcher (secteur, taille, valeurs) cohérent avec le niveau/ville de l'athlète — JAMAIS de nom d'entreprise réel, uniquement une description générique.
-  "conseils_prospection": [string],   // 3-4 conseils concrets et génériques pour trouver ce type d'entreprise soi-même (CCI locale, LinkedIn, clubs d'entrepreneurs...).
   "paliers": [
     {{
       "nom": string,                  // ex: "Partenaire Performance", "Pack Marque Employeur"
@@ -48,12 +50,11 @@ Tu reçois le profil d'un athlète en JSON. Réponds UNIQUEMENT avec un objet JS
 Règles :
 - Ton incisif, business, orienté "retour sur investissement" et "management".
 - Remplace impérativement le vocabulaire associatif ("aidez-moi", "soutenez-moi", "don") par un vocabulaire de partenariat ("investissez", "associez votre image", "collaborons").
-- Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement[cite: 5]. Ne les ignore jamais complètement[cite: 5].
-- Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir)[cite: 5]. Si cette liste est vide, propose des contreparties standards du secteur[cite: 5].
-- Si une ville/région est renseignée, utilise-la dans la proposition de valeur ET dans le profil d'entreprise cible pour appuyer l'argument de l'ancrage local[cite: 5].
-- "profil_entreprise_cible" et "conseils_prospection" doivent rester génériques et méthodologiques : ne JAMAIS inventer de nom d'entreprise, d'email ou de numéro de téléphone réel ou fictif — ce serait une information fabriquée et potentiellement trompeuse[cite: 5].
-- Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du document s'en charge[cite: 5].
-- Réponds uniquement avec le JSON, rien d'autre[cite: 5].
+- Les montants de référence (bas/moyen/haut) te sont donnés dans le message utilisateur : utilise-les comme base pour les 3 paliers, ajuste de ±20% maximum si le profil le justifie clairement. Ne les ignore jamais complètement.
+- Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir). Si cette liste est vide, propose des contreparties standards du secteur.
+- Si une ville/région est renseignée, utilise-la dans la proposition de valeur pour appuyer l'argument de l'ancrage local.
+- Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du document s'en charge.
+- Réponds uniquement avec le JSON, rien d'autre.
 """
 
 SYSTEM_PROMPT_STATS = """Tu analyses une capture d'écran de statistiques d'un réseau social
@@ -76,6 +77,14 @@ résultat imposable de l'entreprise (article 39 du Code Général des Impôts). 
 il permet également une contrepartie de visibilité pour l'entreprise. Ce document ne constitue pas un
 conseil fiscal : la déductibilité effective dépend de chaque situation et doit être validée avec votre
 expert-comptable avant signature."""
+
+# Texte FIXE (pas généré par IA) pour la même raison que FISCAL_TEXTE_FIXE : un taux de
+# référence sourcé plutôt qu'un chiffre inventé au cas par cas par le modèle.
+BENCHMARK_ENGAGEMENT_TEXTE = (
+    "À titre de repère, le taux d'engagement moyen constaté sur les réseaux sociaux se situe "
+    "généralement entre 1 % et 3 % des abonnés. Un taux plus élevé traduit une audience plus "
+    "qualifiée et donc plus réceptive aux messages relayés pour vos partenaires."
+)
 
 # Palette "médaille" pour les 3 paliers, cohérente entre l'aperçu Streamlit et le PDF.
 COULEURS_PALIERS = ["#B08D57", "#8C9199", "#C9A227"]  # bronze, argent, or
@@ -126,8 +135,6 @@ class ContenuBilan:
     accroche: str = ""
     paragraphe_profil: str = ""
     proposition_de_valeur: str = ""
-    profil_entreprise_cible: str = ""
-    conseils_prospection: list = field(default_factory=list)
     paliers: list = field(default_factory=list)
     erreur: str = ""
 
@@ -145,7 +152,9 @@ def _clean_json_response(raw_text: str) -> str:
     return re.sub(r"^```(?:json)?|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
 
 
-def _call_claude(system_prompt: str, content_blocks: list, api_key: str, model: str) -> tuple[str, str]:
+def _call_claude(
+    system_prompt: str, content_blocks: list, api_key: str, model: str, max_tokens: int = 1500
+) -> tuple[str, str]:
     """Retourne (texte_json, erreur). erreur est vide si tout s'est bien passé."""
     try:
         import anthropic
@@ -156,7 +165,7 @@ def _call_claude(system_prompt: str, content_blocks: list, api_key: str, model: 
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model=model,
-            max_tokens=1500,
+            max_tokens=max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": content_blocks}],
         )
@@ -174,7 +183,7 @@ def generate_bilan_content(profil: dict, api_key: str, model: str = DEFAULT_MODE
     contenu_utilisateur = (
         f"Montants de référence calculés à partir du niveau et de l'audience déclarés : "
         f"palier bas ≈ {bas}€, palier moyen ≈ {moyen}€, palier haut ≈ {haut}€.\n\n"
-        "Voici le profil de l'athlète, au format JSON. Rédige le Bilan de Valeur demandé.\n\n"
+        f"Voici le profil de l'athlète, au format JSON. Rédige le {NOM_PRODUIT} demandé.\n\n"
         + json.dumps(profil, ensure_ascii=False, indent=2)
     )
     raw_text, erreur = _call_claude(
@@ -182,6 +191,7 @@ def generate_bilan_content(profil: dict, api_key: str, model: str = DEFAULT_MODE
         [{"type": "text", "text": contenu_utilisateur}],
         api_key,
         model,
+        max_tokens=4000,
     )
     if erreur:
         return ContenuBilan(erreur=erreur)
@@ -204,8 +214,6 @@ def generate_bilan_content(profil: dict, api_key: str, model: str = DEFAULT_MODE
         accroche=str(data.get("accroche", "")).strip(),
         paragraphe_profil=str(data.get("paragraphe_profil", "")).strip(),
         proposition_de_valeur=str(data.get("proposition_de_valeur", "")).strip(),
-        profil_entreprise_cible=str(data.get("profil_entreprise_cible", "")).strip(),
-        conseils_prospection=[str(c).strip() for c in data.get("conseils_prospection", []) if str(c).strip()],
         paliers=paliers,
     )
 
@@ -283,7 +291,7 @@ def _photo_circulaire(photo_bytes: bytes, taille_px: int = 400):
 
 def build_pdf(
     profil: dict,
-    stats: Optional[StatsReseauSocial],
+    stats_liste: Optional[list],
     contenu: ContenuBilan,
     output_path: str,
     photo_bytes: Optional[bytes] = None,
@@ -333,7 +341,7 @@ def build_pdf(
         sous_titre = f"{profil.get('sport', '')} · {profil['ville']} — Dossier de partenariat"
 
     bloc_titre = [
-        Paragraph(profil.get("nom", "Bilan de Valeur"), titre_style),
+        Paragraph(profil.get("nom", NOM_PRODUIT), titre_style),
         Paragraph(sous_titre, accroche_style),
     ]
     if photo_bytes:
@@ -383,24 +391,47 @@ def build_pdf(
         story.append(Paragraph("Palmarès", section_style))
         story.append(Paragraph(profil["palmares"], corps_style))
 
-    if stats and stats.abonnes:
-        story.append(Paragraph("Audience", section_style))
-        texte_stats = f"{stats.abonnes:,} abonnés".replace(",", " ")
-        if stats.plateforme:
-            texte_stats += f" sur {stats.plateforme}"
-        if stats.moyenne_likes:
-            texte_stats += f" — {stats.moyenne_likes:,} likes en moyenne par publication".replace(",", " ")
-        story.append(Paragraph(texte_stats, corps_style))
+    stats_valides = [s for s in (stats_liste or []) if s and s.abonnes]
+    if stats_valides:
+        story.append(Paragraph("Audience & visibilité", section_style))
+
+        data_audience = [["Réseau", "Abonnés", "Engagement moyen", "Taux d'engagement"]]
+        for s in stats_valides:
+            taux = (s.moyenne_likes / s.abonnes * 100) if s.abonnes else 0
+            data_audience.append([
+                Paragraph(s.plateforme or "—", corps_style),
+                Paragraph(f"{s.abonnes:,}".replace(",", " "), corps_style),
+                Paragraph(f"{s.moyenne_likes:,} likes / pub".replace(",", " ") if s.moyenne_likes else "—", corps_style),
+                Paragraph(f"{taux:.1f} %" if s.moyenne_likes else "—", corps_style),
+            ])
+
+        table_audience = Table(data_audience, colWidths=[3.5 * cm, 3 * cm, 4.5 * cm, 4 * cm])
+        table_audience.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), bleu),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F3F6FA")]),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(table_audience)
+        story.append(Spacer(1, 8))
+
+        if len(stats_valides) > 1:
+            audience_totale = sum(s.abonnes for s in stats_valides)
+            story.append(Paragraph(
+                f"Audience cumulée sur {len(stats_valides)} réseaux : "
+                f"{audience_totale:,} abonnés touchés au total.".replace(",", " "),
+                corps_style,
+            ))
+
+        if any(s.moyenne_likes for s in stats_valides):
+            story.append(Paragraph(BENCHMARK_ENGAGEMENT_TEXTE, petit_style))
 
     story.append(Paragraph("Pourquoi s'associer à ce projet ?", section_style))
     story.append(Paragraph(contenu.proposition_de_valeur or "—", corps_style))
-
-    if contenu.profil_entreprise_cible:
-        story.append(Paragraph("Profil d'entreprise à cibler", section_style))
-        story.append(Paragraph(contenu.profil_entreprise_cible, corps_style))
-        if contenu.conseils_prospection:
-            puces = "<br/>".join(f"• {c}" for c in contenu.conseils_prospection)
-            story.append(Paragraph(puces, corps_style))
 
     if contenu.paliers:
         bloc_paliers = [Paragraph("Paliers de partenariat proposés", section_style)]
@@ -464,7 +495,7 @@ def build_pdf(
         story.append(Spacer(1, 16))
         story.append(bloc_cta)
 
-    nom_athlete = profil.get("nom", "Bilan de Valeur")
+    nom_athlete = profil.get("nom", NOM_PRODUIT)
 
     def _pied_de_page(canvas, doc_):
         canvas.saveState()
@@ -472,7 +503,7 @@ def build_pdf(
         canvas.rect(0, 0, A4[0], 1.1 * cm, fill=1, stroke=0)
         canvas.setFillColor(colors.white)
         canvas.setFont("Helvetica", 8)
-        canvas.drawString(2 * cm, 0.4 * cm, f"Bilan de Valeur — {nom_athlete}")
+        canvas.drawString(2 * cm, 0.4 * cm, f"{NOM_PRODUIT} — {nom_athlete}")
         canvas.drawRightString(A4[0] - 2 * cm, 0.4 * cm, f"Page {doc_.page}")
         canvas.restoreState()
 
@@ -544,7 +575,7 @@ def sauver_bilan_pour_utilisateur(
     email: str,
     profil: dict,
     contenu: ContenuBilan,
-    stats: Optional[StatsReseauSocial],
+    stats_liste: Optional[list],
     photo_bytes: Optional[bytes] = None,
 ) -> None:
     """Enregistre un Bilan généré dans l'historique du compte (créé à la volée).
@@ -574,7 +605,7 @@ def sauver_bilan_pour_utilisateur(
             "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "profil": profil,
             "contenu": asdict(contenu),
-            "stats": asdict(stats) if stats else None,
+            "stats": [asdict(s) for s in stats_liste] if stats_liste else [],
             "photo": nom_photo,
         }
     )
@@ -616,20 +647,25 @@ def contenu_depuis_dict(d: dict) -> ContenuBilan:
         accroche=d.get("accroche", ""),
         paragraphe_profil=d.get("paragraphe_profil", ""),
         proposition_de_valeur=d.get("proposition_de_valeur", ""),
-        profil_entreprise_cible=d.get("profil_entreprise_cible", ""),
-        conseils_prospection=d.get("conseils_prospection", []),
         paliers=d.get("paliers", []),
     )
 
 
-def stats_depuis_dict(d: Optional[dict]) -> Optional[StatsReseauSocial]:
+def stats_liste_depuis_dict(d) -> list:
+    """Reconstruit la liste de StatsReseauSocial sauvegardée. Gère aussi l'ancien format
+    (un seul dict par bilan, avant le support multi-réseaux) pour ne pas casser l'historique
+    des bilans déjà enregistrés."""
     if not d:
-        return None
-    return StatsReseauSocial(
-        plateforme=d.get("plateforme", ""),
-        abonnes=d.get("abonnes", 0),
-        moyenne_likes=d.get("moyenne_likes", 0),
-    )
+        return []
+    entrees = [d] if isinstance(d, dict) else d
+    return [
+        StatsReseauSocial(
+            plateforme=e.get("plateforme", ""),
+            abonnes=e.get("abonnes", 0),
+            moyenne_likes=e.get("moyenne_likes", 0),
+        )
+        for e in entrees
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -665,9 +701,9 @@ def envoyer_bilan_par_email(
     message = MIMEMultipart()
     message["From"] = expediteur
     message["To"] = destinataire
-    message["Subject"] = f"Votre Bilan de Valeur — {nom_athlete}"
+    message["Subject"] = f"Votre {NOM_PRODUIT} — {nom_athlete}"
     message.attach(MIMEText(
-        f"Bonjour,\n\nVoici votre Bilan de Valeur généré pour {nom_athlete}, prêt à être envoyé à "
+        f"Bonjour,\n\nVoici votre {NOM_PRODUIT} généré pour {nom_athlete}, prêt à être envoyé à "
         "vos partenaires potentiels.\n\nBonne prospection !",
         "plain",
     ))
@@ -694,65 +730,151 @@ def envoyer_bilan_par_email(
 
 import requests
 
-SYSTEM_PROMPT_PROSPECTION = """Tu es un expert en développement commercial B2B.
-Analyse les résultats bruts de recherche web fournis et sélectionne les 5 entreprises (PME/ETI) les plus pertinentes pour un partenariat de sponsoring sportif local.
-Réponds UNIQUEMENT avec un JSON valide respectant exactement ce format :
+SYSTEM_PROMPT_PROSPECTION = """Tu es un expert en développement commercial B2B et en rédaction d'emails de prospection.
+Analyse les résultats bruts de recherche web fournis (avec leur source) et sélectionne, PARMI CES
+RÉSULTATS UNIQUEMENT, jusqu'à 7 entreprises (toute taille : PME, ETI, grand groupe, cabinet, agence...)
+susceptibles d'être approchées pour un partenariat de sponsoring sportif local, classées de la plus
+pertinente à la moins pertinente. Sois inclusif plutôt que sélectif : dès qu'un nom d'entreprise
+identifiable apparaît dans les résultats et a une présence locale plausible, retiens-le, même si le lien
+avec le sponsoring sportif n'est pas parfait — c'est à "pourquoi_pertinente" de construire ce lien, pas un
+critère d'exclusion. Priorité, si les résultats le permettent, aux entreprises des secteurs sport,
+nutrition, santé ou bien-être, mais ce n'est jamais obligatoire : mieux vaut proposer une entreprise
+pertinente d'un autre secteur que de ne rien proposer.
+
+En plus de la liste d'entreprises, rédige UN SEUL email type de prospection, générique et réutilisable
+pour n'importe laquelle des entreprises listées (pas un email par entreprise) — l'athlète le personnalisera
+lui-même avant chaque envoi.
+
+Réponds UNIQUEMENT avec un JSON valide, sans texte autour, sans balises markdown, respectant
+exactement ce format :
 {
   "cibles": [
     {
-      "nom_entreprise": string,
-      "pourquoi_pertinente": string, // 2 phrases max : lien direct entre l'entreprise, le sport et la marque employeur.
-      "phrase_accroche": string // La première phrase (brise-glace) à utiliser dans un email ou message LinkedIn.
+      "nom_entreprise": string,        // DOIT être un nom qui apparaît explicitement dans les résultats fournis
+      "source_url": string,            // l'URL du résultat d'où vient cette entreprise, copiée telle quelle
+      "pourquoi_pertinente": string,   // 2 phrases max : lien direct entre l'entreprise, le sport et la marque employeur
+      "contact_nom": string,           // nom d'un responsable/décideur SEULEMENT s'il est cité explicitement dans les résultats, sinon ""
+      "contact_email": string,         // email SEULEMENT s'il apparaît explicitement dans les résultats, sinon ""
+      "contact_telephone": string      // téléphone SEULEMENT s'il apparaît explicitement dans les résultats, sinon ""
     }
-  ]
+  ],
+  "email_type": {
+    "objet": string,   // objet court et concret, ex: "Partenariat sponsoring — [Nom athlète]"
+    "corps": string    // email complet, voir consignes ci-dessous
+  }
 }
+
+Consignes de rédaction pour "email_type.corps" :
+- Ton professionnel et direct, dans un cadre de partenariat commercial (jamais de vocabulaire associatif
+  du type "aidez-moi" ou "faites un don").
+- Générique : utilise "[Nom de l'entreprise]" et, si pertinent, "[Prénom du contact]" comme placeholders à
+  remplacer par l'athlète avant l'envoi — ne mentionne aucune entreprise en particulier.
+- Structure en 4 courts paragraphes séparés par des sauts de ligne ("\\n\\n") : (1) formule de politesse +
+  qui est l'athlète et son objectif sportif, (2) pourquoi il cherche des partenaires locaux comme
+  "[Nom de l'entreprise]" (ancrage territorial, valeurs communes), (3) ce que le partenariat apporte
+  concrètement à l'entreprise (visibilité, marque employeur, ancrage local), (4) appel à l'action clair
+  (proposer un échange) + formule de politesse finale et le nom de l'athlète.
+- Environ 120 à 180 mots. Pas de markdown, texte brut uniquement.
+
+Règles impératives :
+- N'invente JAMAIS un nom d'entreprise, une URL, ou un détail qui n'apparaît pas explicitement dans
+  les résultats de recherche fournis. C'est la règle la plus importante : une entreprise fabriquée
+  n'a aucune valeur et peut nuire à la crédibilité de l'athlète auprès d'un vrai interlocuteur. En
+  dehors de cette contrainte de non-fabrication, reste large sur ce que tu acceptes comme cible.
+- Ne réponds avec {"cibles": []} qu'en tout dernier recours, si les résultats fournis ne contiennent
+  vraiment AUCUN nom d'entreprise identifiable (ex : uniquement des pages génériques sans aucune
+  raison sociale citée). Si au moins une entreprise est nommée quelque part dans les résultats,
+  retiens-la plutôt que de renvoyer une liste vide.
+- S'il y a moins de 7 entreprises identifiables dans les résultats, renvoie-en moins — n'invente
+  jamais pour atteindre 7.
+- "contact_nom", "contact_email" et "contact_telephone" doivent rester vides ("") par défaut. Ne
+  les remplis QUE si la donnée exacte (nom de personne, adresse email ou numéro) apparaît telle
+  quelle dans les résultats fournis. Ne déduis jamais un email à partir d'un nom d'entreprise
+  (ex : ne génère jamais "contact@nomdelentreprise.fr" si cette adresse n'est pas écrite noir sur
+  blanc dans les résultats) : un contact inventé est pire qu'aucun contact.
 """
 
 def generer_plan_prospection(profil: dict, tavily_key: str, anthropic_key: str, model: str = DEFAULT_MODEL) -> dict:
-    ville = profil.get("ville", "Île-de-France")
-    sport = profil.get("sport", "sport de haut niveau")
-    
-    # 1. Appel API Tavily pour trouver les PME locales
-    query = f"PME BTP industrie santé recrutement basée à {ville} sponsoring marque employeur"
-    try:
-        resp = requests.post(
-            "https://api.tavily.com/search",
-            json={"api_key": tavily_key, "query": query, "search_depth": "advanced", "max_results": 10},
-            timeout=15
+    # `.get(clé, defaut)` ne s'applique que si la clé est absente, pas si elle vaut "" — d'où le `or`,
+    # nécessaire puisque ces clés existent toujours dans profil (juste parfois vides).
+    ville = profil.get("ville") or "Île-de-France"
+    sport = profil.get("sport") or "sport de haut niveau"
+    nom_athlete = profil.get("nom") or "L'athlète"
+
+    # 1. Appel(s) API Tavily pour trouver les PME locales. Les requêtes sont volontairement variées
+    # (un annuaire ou une liste d'entreprises locales matche mieux qu'une requête trop spécifique) ;
+    # on vise assez de matière pour identifier jusqu'à 7 entreprises, quitte à enchaîner plusieurs
+    # requêtes plutôt que d'abandonner tôt.
+    requetes = [
+        f"annuaire entreprises PME ETI {ville} BTP industrie ESN conseil",
+        f"entreprises {ville} recrutement marque employeur sponsoring local contact dirigeant responsable RH",
+        f"entreprises locales {ville} partenaire sponsoring {sport} club associations",
+    ]
+
+    blocs = []
+    for query in requetes:
+        try:
+            resp = requests.post(
+                "https://api.tavily.com/search",
+                json={"api_key": tavily_key, "query": query, "search_depth": "advanced", "max_results": 15},
+                timeout=15
+            )
+            resp.raise_for_status()
+            tavily_data = resp.json()
+        except Exception as e:
+            if not blocs:
+                return {"erreur": f"Échec de la recherche web Tavily : {str(e)}"}
+            continue
+
+        resultats_bruts = tavily_data.get("results", [])
+        blocs.extend(
+            f"Source : {r.get('url', 'url inconnue')}\nContenu : {r.get('content', '')}"
+            for r in resultats_bruts if r.get("content")
         )
-        resp.raise_for_status()
-        tavily_data = resp.json()
-    except Exception as e:
-        return {"erreur": f"Échec de la recherche web Tavily : {str(e)}"}
 
-    # 2. Concaténation des résultats pour l'IA
-    snippets = [r.get("content", "") for r in tavily_data.get("results", [])]
-    contexte_web = "\n\n".join(snippets)
+        # Assez de matière pour espérer 7 entreprises distinctes : pas besoin des requêtes suivantes.
+        if len(blocs) >= 18:
+            break
 
-    # 3. Synthèse par Claude
-    contenu_utilisateur = f"Profil : {sport} à {ville}.\n\nRésultats web bruts :\n{contexte_web}\n\nIdentifie les 5 meilleures cibles et génère le JSON."
-    
-    raw_text, erreur = _call_claude(
-        SYSTEM_PROMPT_PROSPECTION, 
-        [{"type": "text", "text": contenu_utilisateur}], 
-        anthropic_key, 
-        model
+    contexte_web = "\n\n---\n\n".join(blocs)
+
+    if not contexte_web.strip():
+        return {"erreur": "Aucun résultat exploitable trouvé par la recherche web pour cette ville/ce "
+                           "secteur. Essayez avec une ville plus grande ou reformulez le profil.",
+                "cibles": []}
+
+    # 2. Synthèse par Claude, strictement ancrée sur les résultats ci-dessus
+    contenu_utilisateur = (
+        f"Athlète : {nom_athlete}, {sport}, basé(e) à {ville}.\n\n"
+        f"Résultats de recherche web (avec leur source) :\n{contexte_web}\n\n"
+        "Identifie, parmi CES résultats uniquement, les entreprises pertinentes ainsi qu'un email type "
+        "de prospection réutilisable, et génère le JSON demandé."
     )
-    
+
+    raw_text, erreur = _call_claude(
+        SYSTEM_PROMPT_PROSPECTION,
+        [{"type": "text", "text": contenu_utilisateur}],
+        anthropic_key,
+        model,
+        max_tokens=4000,
+    )
+
     if erreur:
         return {"erreur": erreur}
 
     try:
         return json.loads(_clean_json_response(raw_text))
     except json.JSONDecodeError:
-        return {"erreur": "Claude n'a pas renvoyé un format structuré valide."}
+        # On remonte le texte brut (tronqué) plutôt que de cacher l'erreur : c'est ce qui
+        # permet de diagnostiquer un vrai problème au lieu de deviner.
+        return {"erreur": f"Réponse IA non structurée. Début de la réponse reçue : {raw_text[:300]}"}
 
 def build_pdf_prospection(profil: dict, donnees_prospection: dict, output_path: str):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, KeepTogether
 
     styles = getSampleStyleSheet()
     bleu = colors.HexColor("#1E4D8C")
@@ -764,15 +886,49 @@ def build_pdf_prospection(profil: dict, donnees_prospection: dict, output_path: 
 
     story = []
     story.append(Paragraph("Plan d'Attaque Prospection", titre_style))
-    story.append(Paragraph(f"Cibles identifiées par IA pour {profil.get('nom', '')} ({profil.get('ville', '')})", sous_titre))
+    cibles = donnees_prospection.get("cibles", [])
+    story.append(Paragraph(
+        f"{len(cibles)} cible(s) identifiée(s) par IA pour {profil.get('nom', '')} ({profil.get('ville', '')})",
+        sous_titre,
+    ))
     story.append(HRFlowable(width="100%", color=bleu, thickness=1))
     story.append(Spacer(1, 15))
 
-    for cible in donnees_prospection.get("cibles", []):
-        story.append(Paragraph(cible.get("nom_entreprise", "Entreprise"), nom_ent))
-        story.append(Paragraph(f"<b>Pourquoi cette cible :</b> {cible.get('pourquoi_pertinente', '')}", corps))
-        story.append(Paragraph(f"<b>Accroche suggérée :</b> <i>« {cible.get('phrase_accroche', '')} »</i>", corps))
-        story.append(Spacer(1, 10))
+    contact_style = ParagraphStyle("Contact", parent=corps, fontSize=9, textColor=colors.HexColor("#1E293B"))
+    source_style = ParagraphStyle("Source", parent=corps, fontSize=8, textColor=colors.HexColor("#6B7280"))
+
+    for cible in cibles:
+        bloc = [
+            Paragraph(cible.get("nom_entreprise", "Entreprise"), nom_ent),
+            Paragraph(f"<b>Pourquoi cette cible :</b> {cible.get('pourquoi_pertinente', '')}", corps),
+        ]
+
+        coordonnees = [
+            (label, cible.get(champ, ""))
+            for label, champ in [("Contact", "contact_nom"), ("Email", "contact_email"), ("Tél.", "contact_telephone")]
+            if cible.get(champ)
+        ]
+        if coordonnees:
+            texte_contact = " · ".join(f"<b>{label} :</b> {valeur}" for label, valeur in coordonnees)
+            bloc.append(Paragraph(texte_contact, contact_style))
+        else:
+            bloc.append(Paragraph(
+                "Coordonnées non trouvées dans la recherche web — à identifier via le site de "
+                "l'entreprise ou LinkedIn avant contact.", contact_style,
+            ))
+
+        if cible.get("source_url"):
+            bloc.append(Spacer(1, 4))
+            bloc.append(Paragraph(f"Source à vérifier avant contact : {cible['source_url']}", source_style))
+
+        story.append(KeepTogether(bloc))
+        story.append(Spacer(1, 14))
+
+    if not donnees_prospection.get("cibles"):
+        story.append(Paragraph(
+            "Aucune entreprise n'a pu être identifiée avec certitude à partir de la recherche web. "
+            "Essayez avec une ville plus grande ou reformulez votre profil.", corps
+        ))
 
     doc = SimpleDocTemplate(output_path, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm)
     doc.build(story)
