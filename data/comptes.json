@@ -105,6 +105,67 @@
         "alerte": "",
         "erreur": ""
       }
+    },
+    {
+      "date": "2026-09-12 14:51",
+      "profil": {
+        "nom": "Louis Drogo",
+        "sport": "Natation",
+        "niveau": "Équipe de France",
+        "ville": "Marseille",
+        "palmares": "- x\n- x\n- x\n",
+        "objectif": "JO 2028",
+        "contact": "0608237947",
+        "abonnes": 2000,
+        "contreparties_disponibles": [
+          "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+          "Présence physique (événements ou locaux de l'entreprise)",
+          "Logo sur ma tenue d'entraînement ou de compétition",
+          "Mention dans mes interviews / relations presse"
+        ]
+      },
+      "contenu": {
+        "accroche": "Un nageur international marseillais, en préparation vers les Jeux Olympiques 2028, en quête de partenaires ancrés sur son territoire.",
+        "paragraphe_profil": "Louis Drogo évolue au sein de l'Équipe de France de natation, avec l'objectif affiché de disputer les Jeux Olympiques 2028. Basé à Marseille, il incarne les valeurs de rigueur, de constance et d'exigence propres au haut niveau. Son parcours en équipe nationale témoigne d'un engagement quotidien et d'une progression suivie sur plusieurs saisons. Il souhaite aujourd'hui construire des partenariats durables avec des entreprises partageant cette exigence de performance.",
+        "proposition_de_valeur": "S'associer à Louis Drogo, c'est pour une PME marseillaise l'opportunité de rattacher son image à un athlète de niveau international ancré localement, incarnant sérieux et progression sur le long terme. Cette visibilité, portée jusqu'aux échéances olympiques de 2028, offre une trajectoire de communication crédible et inscrite dans la durée. C'est aussi une façon concrète de soutenir le sport de haut niveau régional et de valoriser cet engagement auprès de ses propres clients et collaborateurs.",
+        "paliers": [
+          {
+            "nom": "Partenaire Découverte",
+            "montant_eur": 900.0,
+            "contreparties": [
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          },
+          {
+            "nom": "Partenaire Performance",
+            "montant_eur": 2800.0,
+            "contreparties": [
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          },
+          {
+            "nom": "Partenaire Ambassadeur",
+            "montant_eur": 5600.0,
+            "contreparties": [
+              "Logo sur ma tenue d'entraînement ou de compétition",
+              "Présence physique (événements ou locaux de l'entreprise)",
+              "Visibilité sur mes réseaux sociaux (posts, stories régulières)",
+              "Mention dans mes interviews / relations presse"
+            ]
+          }
+        ],
+        "erreur": ""
+      },
+      "stats": {
+        "plateforme": "Instagram",
+        "abonnes": 2000,
+        "moyenne_likes": 250,
+        "alerte": "",
+        "erreur": ""
+      }
     }
   ]
 }

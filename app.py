@@ -11,6 +11,7 @@ Lancer en local :
 
 from __future__ import annotations
 
+import base64
 import tempfile
 from pathlib import Path
 
@@ -21,10 +22,12 @@ from utils import (
     COULEURS_PALIERS,
     DEFAULT_MODEL,
     build_pdf,
+    charger_photo,
     charger_temoignages,
     contenu_depuis_dict,
     generate_bilan_content,
     get_bilans_utilisateur,
+    get_tous_les_profils,
     sauver_bilan_pour_utilisateur,
     sauver_temoignage,
     stats_depuis_dict,
@@ -78,6 +81,26 @@ st.markdown(
     .carte-palier .montant { font-size: 1.6rem; font-weight: 800; color: #16365F; margin: 0.2rem 0 0.7rem 0; }
     .carte-palier ul { margin: 0; padding-left: 1.1rem; }
     .carte-palier li { margin-bottom: 0.3rem; font-size: 0.92rem; color: #3A4550; }
+
+    .carte-athlete {
+        border-radius: 12px;
+        padding: 1.2rem 1rem;
+        background: white;
+        box-shadow: 0 2px 10px rgba(20, 30, 50, 0.08);
+        text-align: center;
+        margin-bottom: 0.6rem;
+    }
+    .carte-athlete img {
+        width: 84px; height: 84px; border-radius: 50%; object-fit: cover;
+        margin-bottom: 0.6rem; border: 3px solid #EEF2F6;
+    }
+    .carte-athlete .photo-vide {
+        width: 84px; height: 84px; border-radius: 50%; background: #EEF2F6;
+        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.6rem auto;
+        font-size: 1.8rem; color: #9AA5B1;
+    }
+    .carte-athlete .nom { font-weight: 700; color: #20272A; font-size: 1.02rem; }
+    .carte-athlete .details { color: #5B6672; font-size: 0.85rem; margin-top: 0.1rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -163,7 +186,56 @@ email_compte = st.text_input(
     placeholder="camille.dubois@email.com",
 )
 
-onglet_nouveau, onglet_historique = st.tabs(["🆕 Nouveau Bilan", "📂 Mes Bilans"])
+onglet_decouvrir, onglet_nouveau, onglet_historique = st.tabs(
+    ["🏠 Découvrir les athlètes", "🆕 Nouveau Bilan", "📂 Mes Bilans"]
+)
+
+# ---------------------------------------------------------------------------
+# Onglet : page d'accueil / galerie de tous les profils inscrits
+# ---------------------------------------------------------------------------
+
+with onglet_decouvrir:
+    profils = get_tous_les_profils()
+    if not profils:
+        st.info("Aucun athlète n'a encore créé de Bilan de Valeur. Soyez le premier dans l'onglet "
+                 "« Nouveau Bilan » !")
+    else:
+        st.caption(f"{len(profils)} athlète(s) ont créé leur Bilan de Valeur")
+        colonnes = st.columns(3)
+        for i, p in enumerate(profils):
+            profil_p = p["profil"]
+            photo_bytes_p = charger_photo(p.get("photo"))
+            with colonnes[i % 3]:
+                if photo_bytes_p:
+                    b64 = base64.b64encode(photo_bytes_p).decode("utf-8")
+                    photo_html = f'<img src="data:image/jpeg;base64,{b64}" />'
+                else:
+                    photo_html = '<div class="photo-vide">🏅</div>'
+                st.markdown(
+                    f"""
+                    <div class="carte-athlete">
+                        {photo_html}
+                        <div class="nom">{profil_p.get('nom', '')}</div>
+                        <div class="details">{profil_p.get('sport', '')}</div>
+                        <div class="details">{profil_p.get('ville', '')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                contenu_p = contenu_depuis_dict(p["contenu"])
+                stats_p = stats_depuis_dict(p.get("stats"))
+                with tempfile.TemporaryDirectory() as tmp:
+                    pdf_path = str(Path(tmp) / "bilan.pdf")
+                    build_pdf(profil_p, stats_p, contenu_p, pdf_path, photo_bytes=photo_bytes_p)
+                    pdf_bytes_p = Path(pdf_path).read_bytes()
+                st.download_button(
+                    "⬇️ Voir le Bilan",
+                    data=pdf_bytes_p,
+                    file_name=f"bilan_{profil_p.get('nom', 'athlete').replace(' ', '_')}.pdf",
+                    mime="application/pdf",
+                    key=f"dl_galerie_{i}",
+                    use_container_width=True,
+                )
 
 # ---------------------------------------------------------------------------
 # Onglet : nouveau Bilan
@@ -258,7 +330,7 @@ with onglet_nouveau:
                 st.session_state.profil_courant = profil
                 st.session_state.photo_courante = photo_bytes
                 st.session_state.pdf_path = None
-                sauver_bilan_pour_utilisateur(email_compte, profil, contenu, stats)
+                sauver_bilan_pour_utilisateur(email_compte, profil, contenu, stats, photo_bytes=photo_bytes)
                 st.toast("Bilan enregistré dans votre compte — retrouvez-le dans « Mes Bilans ».")
 
     # -----------------------------------------------------------------
@@ -280,6 +352,13 @@ with onglet_nouveau:
 
         st.write("**Pourquoi s'associer à ce projet ?**")
         st.write(contenu.proposition_de_valeur)
+
+        if contenu.profil_entreprise_cible:
+            st.write("**Profil d'entreprise à cibler**")
+            st.write(contenu.profil_entreprise_cible)
+            if contenu.conseils_prospection:
+                for conseil in contenu.conseils_prospection:
+                    st.markdown(f"- {conseil}")
 
         if contenu.paliers:
             st.write("**Paliers de partenariat proposés**")
@@ -360,9 +439,10 @@ with onglet_historique:
                     with col_bouton:
                         contenu_h = contenu_depuis_dict(entree["contenu"])
                         stats_h = stats_depuis_dict(entree.get("stats"))
+                        photo_h = charger_photo(entree.get("photo"))
                         with tempfile.TemporaryDirectory() as tmp:
                             pdf_path = str(Path(tmp) / "bilan.pdf")
-                            build_pdf(profil_h, stats_h, contenu_h, pdf_path)
+                            build_pdf(profil_h, stats_h, contenu_h, pdf_path, photo_bytes=photo_h)
                             pdf_bytes = Path(pdf_path).read_bytes()
                         st.download_button(
                             "⬇️ PDF",

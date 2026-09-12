@@ -37,6 +37,11 @@ autour, sans balises markdown, avec exactement ces clés :
   "accroche": string,               // une phrase d'ouverture percutante (1 phrase, pas de superlatifs creux)
   "paragraphe_profil": string,      // 3-4 phrases présentant l'athlète, son parcours, ses valeurs
   "proposition_de_valeur": string,  // 2-3 phrases : pourquoi une PME locale gagnerait à s'associer à cet athlète
+  "profil_entreprise_cible": string,  // 2-3 phrases décrivant le TYPE d'entreprise à démarcher (secteur,
+                                       // taille, valeurs) cohérent avec le niveau/ville de l'athlète —
+                                       // JAMAIS de nom d'entreprise réel, uniquement une description générique
+  "conseils_prospection": [string],   // 3-4 conseils concrets et génériques pour trouver ce type
+                                       // d'entreprise soi-même (CCI locale, LinkedIn, clubs partenaires...)
   "paliers": [
     {{
       "nom": string,               // ex: "Partenaire Découverte"
@@ -54,8 +59,11 @@ Règles :
 - Les contreparties de chaque palier DOIVENT être choisies parmi celles listées dans
   "contreparties_disponibles" du profil (c'est ce que l'athlète a réellement accepté d'offrir). Si
   cette liste est vide, propose des contreparties standards du secteur.
-- Si une ville/région est renseignée, utilise-la dans la proposition de valeur pour appuyer
-  l'argument de l'ancrage local auprès d'une PME.
+- Si une ville/région est renseignée, utilise-la dans la proposition de valeur ET dans le profil
+  d'entreprise cible pour appuyer l'argument de l'ancrage local.
+- "profil_entreprise_cible" et "conseils_prospection" doivent rester génériques et méthodologiques :
+  ne JAMAIS inventer de nom d'entreprise, d'email ou de numéro de téléphone réel ou fictif — ce serait
+  une information fabriquée et potentiellement trompeuse.
 - Ne mentionne aucun chiffre de fiscalité ou de loi : ce n'est pas ton rôle, une autre partie du
   document s'en charge.
 - Réponds uniquement avec le JSON, rien d'autre.
@@ -131,6 +139,8 @@ class ContenuBilan:
     accroche: str = ""
     paragraphe_profil: str = ""
     proposition_de_valeur: str = ""
+    profil_entreprise_cible: str = ""
+    conseils_prospection: list = field(default_factory=list)
     paliers: list = field(default_factory=list)
     erreur: str = ""
 
@@ -207,6 +217,8 @@ def generate_bilan_content(profil: dict, api_key: str, model: str = DEFAULT_MODE
         accroche=str(data.get("accroche", "")).strip(),
         paragraphe_profil=str(data.get("paragraphe_profil", "")).strip(),
         proposition_de_valeur=str(data.get("proposition_de_valeur", "")).strip(),
+        profil_entreprise_cible=str(data.get("profil_entreprise_cible", "")).strip(),
+        conseils_prospection=[str(c).strip() for c in data.get("conseils_prospection", []) if str(c).strip()],
         paliers=paliers,
     )
 
@@ -304,6 +316,7 @@ def build_pdf(
         TableStyle,
         HRFlowable,
         Image,
+        KeepTogether,
     )
 
     styles = getSampleStyleSheet()
@@ -359,7 +372,22 @@ def build_pdf(
     story.append(Spacer(1, 10))
 
     if contenu.accroche:
-        story.append(Paragraph(f"<i>{contenu.accroche}</i>", accroche_style))
+        accroche_encart_style = ParagraphStyle(
+            "AccrocheEncart", parent=styles["Normal"], fontSize=12.5, leading=17,
+            textColor=colors.HexColor("#16365F"), fontName="Helvetica-Oblique",
+        )
+        encart = Table(
+            [[Paragraph(contenu.accroche, accroche_encart_style)]], colWidths=[15 * cm]
+        )
+        encart.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EEF2F6")),
+            ("LINEBEFORE", (0, 0), (0, -1), 4, bleu),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ("LEFTPADDING", (0, 0), (-1, -1), 14),
+        ]))
+        story.append(encart)
+        story.append(Spacer(1, 12))
 
     story.append(Paragraph("Profil", section_style))
     story.append(Paragraph(contenu.paragraphe_profil or "—", corps_style))
@@ -380,8 +408,15 @@ def build_pdf(
     story.append(Paragraph("Pourquoi s'associer à ce projet ?", section_style))
     story.append(Paragraph(contenu.proposition_de_valeur or "—", corps_style))
 
+    if contenu.profil_entreprise_cible:
+        story.append(Paragraph("Profil d'entreprise à cibler", section_style))
+        story.append(Paragraph(contenu.profil_entreprise_cible, corps_style))
+        if contenu.conseils_prospection:
+            puces = "<br/>".join(f"• {c}" for c in contenu.conseils_prospection)
+            story.append(Paragraph(puces, corps_style))
+
     if contenu.paliers:
-        story.append(Paragraph("Paliers de partenariat proposés", section_style))
+        bloc_paliers = [Paragraph("Paliers de partenariat proposés", section_style)]
         nom_style = ParagraphStyle("NomPalier", parent=corps_style, fontSize=9, leading=12)
         montant_style = ParagraphStyle(
             "MontantPalier", parent=corps_style, fontSize=9, leading=12, alignment=1
@@ -410,21 +445,55 @@ def build_pdf(
             couleur = colors.HexColor(COULEURS_PALIERS[i % len(COULEURS_PALIERS)])
             style_commands.append(("LINEBEFORE", (0, i + 1), (0, i + 1), 4, couleur))
         table.setStyle(TableStyle(style_commands))
-        story.append(table)
+        bloc_paliers.append(table)
+        # KeepTogether évite que la dernière ligne du tableau se retrouve seule
+        # sur la page suivante, sans son en-tête (défaut visuel constaté).
+        story.append(KeepTogether(bloc_paliers))
 
-    story.append(Spacer(1, 16))
+    story.append(Spacer(1, 18))
     story.append(Paragraph("Cadre fiscal", section_style))
     story.append(Paragraph(FISCAL_TEXTE_FIXE, petit_style))
 
-    if profil.get("contact"):
-        story.append(Spacer(1, 10))
-        story.append(Paragraph(f"Contact : {profil['contact']}", corps_style))
+    contact = profil.get("contact")
+    if contact:
+        cta_style = ParagraphStyle(
+            "CTA", parent=styles["Normal"], fontSize=11, leading=15, textColor=colors.white,
+        )
+        cta_titre_style = ParagraphStyle(
+            "CTATitre", parent=cta_style, fontSize=13, fontName="Helvetica-Bold", spaceAfter=4,
+        )
+        bloc_cta = Table(
+            [[Paragraph("Intéressé par ce partenariat ?", cta_titre_style)],
+             [Paragraph(f"Contactez {profil.get('nom', 'moi')} directement : {contact}", cta_style)]],
+            colWidths=[15 * cm],
+        )
+        bloc_cta.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), bleu),
+            ("TOPPADDING", (0, 0), (-1, 0), 14),
+            ("BOTTOMPADDING", (0, -1), (-1, -1), 14),
+            ("LEFTPADDING", (0, 0), (-1, -1), 16),
+            ("TOPPADDING", (0, 1), (-1, 1), 2),
+        ]))
+        story.append(Spacer(1, 16))
+        story.append(bloc_cta)
+
+    nom_athlete = profil.get("nom", "Bilan de Valeur")
+
+    def _pied_de_page(canvas, doc_):
+        canvas.saveState()
+        canvas.setFillColor(bleu)
+        canvas.rect(0, 0, A4[0], 1.1 * cm, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(2 * cm, 0.4 * cm, f"Bilan de Valeur — {nom_athlete}")
+        canvas.drawRightString(A4[0] - 2 * cm, 0.4 * cm, f"Page {doc_.page}")
+        canvas.restoreState()
 
     doc = SimpleDocTemplate(
         output_path, pagesize=A4,
-        topMargin=2 * cm, bottomMargin=2 * cm, leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=2.3 * cm, leftMargin=2 * cm, rightMargin=2 * cm,
     )
-    doc.build(story)
+    doc.build(story, onFirstPage=_pied_de_page, onLaterPages=_pied_de_page)
     return avertissement_photo
 
 
@@ -463,6 +532,7 @@ def sauver_temoignage(nom: str, sport: str, avis: str) -> None:
 # logique, hors scope de ce soir.
 
 COMPTES_PATH = Path(__file__).parent / "data" / "comptes.json"
+PHOTOS_DIR = Path(__file__).parent / "data" / "photos"
 
 
 def _normaliser_email(email: str) -> str:
@@ -484,14 +554,31 @@ def _sauver_comptes(comptes: dict) -> None:
 
 
 def sauver_bilan_pour_utilisateur(
-    email: str, profil: dict, contenu: ContenuBilan, stats: Optional[StatsReseauSocial]
+    email: str,
+    profil: dict,
+    contenu: ContenuBilan,
+    stats: Optional[StatsReseauSocial],
+    photo_bytes: Optional[bytes] = None,
 ) -> None:
-    """Enregistre un Bilan généré dans l'historique du compte (créé à la volée)."""
+    """Enregistre un Bilan généré dans l'historique du compte (créé à la volée).
+
+    Si une photo est fournie, elle est écrite sur disque (data/photos/) et
+    seul son nom de fichier est stocké dans comptes.json — on évite de
+    gonfler ce fichier JSON avec des blobs binaires encodés en base64."""
     from datetime import datetime
 
     email_normalise = _normaliser_email(email)
     if not email_normalise:
         return
+
+    nom_photo = None
+    if photo_bytes:
+        try:
+            PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+            nom_photo = f"{email_normalise.replace('@', '_at_')}.jpg"
+            (PHOTOS_DIR / nom_photo).write_bytes(photo_bytes)
+        except OSError:
+            nom_photo = None  # l'échec d'écriture de la photo ne doit pas bloquer la sauvegarde du bilan
 
     comptes = _charger_comptes()
     comptes.setdefault(email_normalise, [])
@@ -501,9 +588,19 @@ def sauver_bilan_pour_utilisateur(
             "profil": profil,
             "contenu": asdict(contenu),
             "stats": asdict(stats) if stats else None,
+            "photo": nom_photo,
         }
     )
     _sauver_comptes(comptes)
+
+
+def charger_photo(nom_photo: Optional[str]) -> Optional[bytes]:
+    if not nom_photo:
+        return None
+    chemin = PHOTOS_DIR / nom_photo
+    if chemin.exists():
+        return chemin.read_bytes()
+    return None
 
 
 def get_bilans_utilisateur(email: str) -> list:
@@ -513,11 +610,27 @@ def get_bilans_utilisateur(email: str) -> list:
     return list(reversed(entrees))
 
 
+def get_tous_les_profils() -> list:
+    """Retourne, pour chaque compte ayant généré au moins un Bilan, son entrée la plus
+    récente — utilisé pour la page d'accueil qui liste tous les athlètes inscrits."""
+    comptes = _charger_comptes()
+    profils = []
+    for email, entrees in comptes.items():
+        if entrees:
+            derniere = entrees[-1]
+            profils.append({"email": email, **derniere})
+    # Les plus récemment actifs en premier
+    profils.sort(key=lambda p: p.get("date", ""), reverse=True)
+    return profils
+
+
 def contenu_depuis_dict(d: dict) -> ContenuBilan:
     return ContenuBilan(
         accroche=d.get("accroche", ""),
         paragraphe_profil=d.get("paragraphe_profil", ""),
         proposition_de_valeur=d.get("proposition_de_valeur", ""),
+        profil_entreprise_cible=d.get("profil_entreprise_cible", ""),
+        conseils_prospection=d.get("conseils_prospection", []),
         paliers=d.get("paliers", []),
     )
 

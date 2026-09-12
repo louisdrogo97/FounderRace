@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.streamlit/secrets.toml
+
+# Photos des athletes : donnees personnelles, ne doivent pas finir sur GitHub.
+data/photos/*.jpg
+data/photos/*.jpeg
+data/photos/*.png
+!data/photos/.gitkeep
+
+# Note : data/comptes.json et data/temoignages.json restent volontairement
+# suivis -- ce sont les preuves de traction et de fonctionnement que le
+# jury doit pouvoir voir dans l'historique de commits.
